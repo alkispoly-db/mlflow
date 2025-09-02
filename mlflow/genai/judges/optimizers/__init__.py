@@ -1,3 +1,7 @@
 """MLflow GenAI Judge Optimizers."""
 
-# This file will be populated with optimizer classes in subsequent branches
+from mlflow.genai.judges.optimizers.dspy import DSPyAlignmentOptimizer
+
+__all__ = [
+    "DSPyAlignmentOptimizer",
+]
