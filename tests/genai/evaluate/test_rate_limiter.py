@@ -38,6 +38,21 @@ def test_invalid_rate_raises():
         RPSRateLimiter(-1)
 
 
+def test_sub_one_rps_can_acquire():
+    # rps < 1.0 was broken: _max_tokens was set to rps, so the bucket could never
+    # accumulate a full token and acquire() would loop forever.
+    clock = FakeClock()
+    limiter = RPSRateLimiter(0.5, clock=clock.monotonic, sleep=clock.sleep)  # 1 req / 2s
+
+    # First acquire: initial tokens=0.5, sleeps 1s to reach 1.0, then succeeds.
+    # Second acquire: tokens=0, sleeps 2s to reach 1.0, then succeeds.
+    limiter.acquire()
+    limiter.acquire()
+
+    total_sleep = sum(clock.sleep_calls)
+    assert total_sleep == pytest.approx(3.0, abs=0.1)
+
+
 def test_burst_tokens_consumed_without_sleeping():
     clock = FakeClock()
     limiter = RPSRateLimiter(5, clock=clock.monotonic, sleep=clock.sleep)

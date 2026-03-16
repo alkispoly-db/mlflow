@@ -83,7 +83,8 @@ class RPSRateLimiter(RateLimiter):
             raise ValueError("requests_per_second must be positive")
         self._rps = requests_per_second
         self._initial_rps = requests_per_second
-        self._max_tokens = requests_per_second
+        # Burst capacity is always at least 1 token so the bucket can fill even for rps < 1.0.
+        self._max_tokens = max(1.0, requests_per_second)
         self._tokens = requests_per_second
         self._clock = clock
         self._sleep = sleep
