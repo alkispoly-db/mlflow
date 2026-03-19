@@ -448,9 +448,7 @@ def _apply_dimension_to_query(
 
 
 def _validate_metric_names_combinable(view_type: MetricViewType, metric_names: list[str]) -> None:
-    """Validate that multiple metric names can be queried in a single SQL statement.
-
-    Multi-metric queries are supported only for token metrics in the TRACES view because
+    """Multi-metric queries are supported only for token metrics in the TRACES view because
     they all aggregate SqlTraceMetrics.value with different key filters, which can be
     expressed as a single JOIN with a conditional GROUP BY on the key column.
     """
@@ -733,13 +731,21 @@ def query_metrics(
     Returns:
         List of MetricDataPoint objects
     """
-    if len(metric_names) > 1:
-        return _query_metrics_multi(
-            view_type, db_type, query, metric_names, aggregations, dimensions,
-            filters, time_interval_seconds, max_results,
-        )
-
-    metric_name = metric_names[0]
+    match metric_names:
+        case [metric_name]:
+            pass
+        case _:
+            return _query_metrics_multi(
+                view_type,
+                db_type,
+                query,
+                metric_names,
+                aggregations,
+                dimensions,
+                filters,
+                time_interval_seconds,
+                max_results,
+            )
 
     # Apply view-specific initial join
     query = _apply_view_initial_join(query, view_type)
@@ -863,8 +869,7 @@ def validate_query_trace_metrics_params(
     aggregations: list[MetricAggregation],
     dimensions: list[str] | None,
 ):
-    """Validate parameters for query_trace_metrics.
-
+    """
     Args:
         view_type: Type of metrics view (e.g., TRACES, SPANS, ASSESSMENTS)
         metric_names: Names of the metrics to query
