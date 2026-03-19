@@ -2979,11 +2979,10 @@ def test_query_trace_metrics_handler(mock_get_request_message, mock_tracking_sto
         ).to_proto(),
     ]
 
-    # Create the request message
+    # Create the request message using the new metric_names field
     request_msg = QueryTraceMetrics(
         experiment_ids=experiment_ids,
         view_type=MetricViewType.TRACES.to_proto(),
-        metric_name=metric_name,
         aggregations=aggregations_proto,
         dimensions=["status", "model"],
         filters=["status = 'OK'"],
@@ -2993,6 +2992,7 @@ def test_query_trace_metrics_handler(mock_get_request_message, mock_tracking_sto
         max_results=100,
         page_token="token123",
     )
+    request_msg.metric_names.append(metric_name)
     mock_get_request_message.return_value = request_msg
 
     # Create mock result
@@ -3021,7 +3021,7 @@ def test_query_trace_metrics_handler(mock_get_request_message, mock_tracking_sto
     mock_tracking_store.query_trace_metrics.assert_called_once_with(
         experiment_ids=experiment_ids,
         view_type=MetricViewType.TRACES,
-        metric_name=metric_name,
+        metric_names=[metric_name],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.AVG),
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=95.0),
@@ -3046,6 +3046,7 @@ def test_query_trace_metrics_handler(mock_get_request_message, mock_tracking_sto
 
 
 def test_query_trace_metrics_handler_empty_result(mock_get_request_message, mock_tracking_store):
+    # Test backward compat: deprecated metric_name (singular) is still accepted
     request_msg = QueryTraceMetrics(
         experiment_ids=["exp1"],
         view_type=MetricViewType.TRACES.to_proto(),
@@ -3061,10 +3062,11 @@ def test_query_trace_metrics_handler_empty_result(mock_get_request_message, mock
 
     response = _query_trace_metrics()
 
+    # Handler wraps singular metric_name into a list for the store
     mock_tracking_store.query_trace_metrics.assert_called_once_with(
         experiment_ids=["exp1"],
         view_type=MetricViewType.TRACES,
-        metric_name="latency",
+        metric_names=["latency"],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=None,
         filters=None,
@@ -3079,6 +3081,42 @@ def test_query_trace_metrics_handler_empty_result(mock_get_request_message, mock
     assert response.status_code == 200
     response_data = json.loads(response.get_data())
     assert response_data == {}
+
+
+def test_query_trace_metrics_handler_multi_metric(mock_get_request_message, mock_tracking_store):
+    """metric_names with multiple values is passed through to the store as a list."""
+    metric_names = ["input_tokens", "output_tokens"]
+    request_msg = QueryTraceMetrics(
+        experiment_ids=["exp1"],
+        view_type=MetricViewType.TRACES.to_proto(),
+        aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM).to_proto()],
+        time_interval_seconds=3600,
+        start_time_ms=1000000,
+        end_time_ms=2000000,
+    )
+    request_msg.metric_names.extend(metric_names)
+    mock_get_request_message.return_value = request_msg
+
+    mock_result = mock.MagicMock()
+    mock_result.__iter__ = mock.MagicMock(return_value=iter([]))
+    mock_result.token = None
+    mock_tracking_store.query_trace_metrics.return_value = mock_result
+
+    _query_trace_metrics()
+
+    mock_tracking_store.query_trace_metrics.assert_called_once_with(
+        experiment_ids=["exp1"],
+        view_type=MetricViewType.TRACES,
+        metric_names=metric_names,
+        aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
+        dimensions=None,
+        filters=None,
+        time_interval_seconds=3600,
+        start_time_ms=1000000,
+        end_time_ms=2000000,
+        max_results=MAX_RESULTS_QUERY_TRACE_METRICS,
+        page_token=None,
+    )
 
 
 def test_invoke_scorer_missing_experiment_id():

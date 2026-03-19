@@ -484,7 +484,7 @@ class AbstractStore(GatewayStoreMixin):
         self,
         experiment_ids: list[str],
         view_type: MetricViewType,
-        metric_name: str,
+        metric_names: list[str],
         aggregations: list[MetricAggregation],
         dimensions: list[str] | None = None,
         filters: list[str] | None = None,
@@ -500,7 +500,8 @@ class AbstractStore(GatewayStoreMixin):
         Args:
             experiment_ids: List of experiment ids to query metrics for.
             view_type: The view type to query metrics for.
-            metric_name: The metric name to query metrics for.
+            metric_names: The metric name(s) to query. When multiple names are provided they
+                must share the same aggregation semantics and are returned in a single query.
             aggregations: The aggregations to apply to the metrics.
             dimensions: The dimensions to group metrics by.
             filters: The filters to apply to the traces.

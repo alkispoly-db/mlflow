@@ -10,10 +10,13 @@ import {
 
 const TRACE_METRICS_QUERY_KEY = 'traceMetrics';
 
+// Extends the shared request type with the new metric_names field not yet in the package.
+type TraceMetricsRequestBody = QueryTraceMetricsRequest & { metric_names?: string[] };
+
 /**
  * Query aggregated trace metrics for experiments
  */
-async function queryTraceMetrics(params: QueryTraceMetricsRequest): Promise<QueryTraceMetricsResponse> {
+async function queryTraceMetrics(params: TraceMetricsRequestBody): Promise<QueryTraceMetricsResponse> {
   return fetchOrFail(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), {
     method: 'POST',
     headers: {
@@ -30,7 +33,10 @@ interface UseTraceMetricsQueryParams {
   startTimeMs?: number;
   endTimeMs?: number;
   viewType: MetricViewType;
-  metricName: string;
+  /** @deprecated Use metricNames instead. */
+  metricName?: string;
+  /** One or more metric names to query in a single request. Prefer this over metricName. */
+  metricNames?: string[];
   aggregations: MetricAggregation[];
   /** Optional: Time interval for grouping. If not provided, no time grouping is applied. */
   timeIntervalSeconds?: number;
@@ -48,16 +54,20 @@ export function useTraceMetricsQuery({
   endTimeMs,
   viewType,
   metricName,
+  metricNames,
   aggregations,
   timeIntervalSeconds,
   filters,
   dimensions,
   enabled = true,
 }: UseTraceMetricsQueryParams) {
-  const queryParams: QueryTraceMetricsRequest = {
+  // metricNames takes precedence; fall back to the deprecated metricName.
+  const resolvedMetricNames = metricNames ?? (metricName ? [metricName] : undefined);
+
+  const queryParams: TraceMetricsRequestBody = {
     experiment_ids: experimentIds,
     view_type: viewType,
-    metric_name: metricName,
+    metric_names: resolvedMetricNames,
     aggregations,
     time_interval_seconds: timeIntervalSeconds,
     start_time_ms: startTimeMs,
@@ -73,7 +83,7 @@ export function useTraceMetricsQuery({
       startTimeMs,
       endTimeMs,
       viewType,
-      metricName,
+      resolvedMetricNames,
       aggregations,
       timeIntervalSeconds,
       filters,
@@ -83,7 +93,7 @@ export function useTraceMetricsQuery({
       const response = await queryTraceMetrics(queryParams);
       return response;
     },
-    enabled: experimentIds.length > 0 && enabled,
+    enabled: experimentIds.length > 0 && !!resolvedMetricNames?.length && enabled,
     refetchOnWindowFocus: false,
   });
 }

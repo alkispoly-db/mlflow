@@ -689,7 +689,7 @@ class RestStore(WorkspaceRestStoreMixin, RestGatewayStoreMixin, AbstractStore):
         self,
         experiment_ids: list[str],
         view_type: MetricViewType,
-        metric_name: str,
+        metric_names: list[str],
         aggregations: list[MetricAggregation],
         dimensions: list[str] | None = None,
         filters: list[str] | None = None,
@@ -703,10 +703,10 @@ class RestStore(WorkspaceRestStoreMixin, RestGatewayStoreMixin, AbstractStore):
         request = QueryTraceMetrics(
             experiment_ids=experiment_ids,
             view_type=view_type.to_proto(),
-            metric_name=metric_name,
             aggregations=[agg.to_proto() for agg in aggregations],
             max_results=max_results,
         )
+        request.metric_names.extend(metric_names)
         if dimensions:
             request.dimensions.extend(dimensions)
         if filters:

@@ -3839,7 +3839,7 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
         self,
         experiment_ids: list[str],
         view_type: MetricViewType,
-        metric_name: str,
+        metric_names: list[str],
         aggregations: list[MetricAggregation],
         dimensions: list[str] | None = None,
         filters: list[str] | None = None,
@@ -3849,7 +3849,7 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
         max_results: int = MAX_RESULTS_QUERY_TRACE_METRICS,
         page_token: str | None = None,
     ) -> PagedList[list[MetricDataPoint]]:
-        validate_query_trace_metrics_params(view_type, metric_name, aggregations, dimensions)
+        validate_query_trace_metrics_params(view_type, metric_names, aggregations, dimensions)
 
         if time_interval_seconds and (start_time_ms is None or end_time_ms is None):
             raise MlflowException.invalid_parameter_value(
@@ -3874,7 +3874,7 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                 view_type=view_type,
                 db_type=self.db_type,
                 query=query,
-                metric_name=metric_name,
+                metric_names=metric_names,
                 aggregations=aggregations,
                 dimensions=dimensions,
                 filters=filters,

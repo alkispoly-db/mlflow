@@ -145,6 +145,8 @@ VIEW_TYPE_CONFIGS: dict[MetricViewType, dict[str, TraceMetricsConfig]] = {
 }
 
 TIME_BUCKET_LABEL = "time_bucket"
+# Internal column label used to carry metric_name through multi-metric queries
+_METRIC_NAME_LABEL = "_metric_name"
 
 
 def get_percentile_aggregation(
@@ -445,6 +447,26 @@ def _apply_dimension_to_query(
     )
 
 
+def _validate_metric_names_combinable(view_type: MetricViewType, metric_names: list[str]) -> None:
+    """Validate that multiple metric names can be queried in a single SQL statement.
+
+    Multi-metric queries are supported only for token metrics in the TRACES view because
+    they all aggregate SqlTraceMetrics.value with different key filters, which can be
+    expressed as a single JOIN with a conditional GROUP BY on the key column.
+    """
+    if view_type != MetricViewType.TRACES:
+        raise MlflowException.invalid_parameter_value(
+            f"Multiple metric_names is only supported for the TRACES view type, got '{view_type}'."
+        )
+    token_keys = set(TraceMetricKey.token_usage_keys())
+    non_token = [m for m in metric_names if m not in token_keys]
+    if non_token:
+        raise MlflowException.invalid_parameter_value(
+            f"Multiple metric_names is only supported for token metrics "
+            f"({sorted(token_keys)}). Got unsupported metric(s): {non_token}."
+        )
+
+
 def _apply_view_initial_join(query: Query, view_type: MetricViewType) -> Query:
     """
     Apply initial join required for the view type.
@@ -686,7 +708,7 @@ def query_metrics(
     view_type: MetricViewType,
     db_type: str,
     query: Query,
-    metric_name: str,
+    metric_names: list[str],
     aggregations: list[MetricAggregation],
     dimensions: list[str] | None,
     filters: list[str] | None,
@@ -699,7 +721,9 @@ def query_metrics(
         view_type: Type of metrics view (e.g., TRACES, SPANS)
         db_type: Database type (e.g., "postgresql", "mssql", "mysql")
         query: Base SQLAlchemy query
-        metric_name: Name of the metric to query
+        metric_names: Name(s) of the metric(s) to query. When multiple names are provided,
+            all must be combinable (see _validate_metric_names_combinable) and the query
+            is executed as a single SQL statement with GROUP BY on the metric key.
         aggregations: List of aggregations to compute
         dimensions: List of dimensions to group by
         filters: List of filter strings (each parsed by SearchTraceUtils), combined with AND
@@ -709,6 +733,14 @@ def query_metrics(
     Returns:
         List of MetricDataPoint objects
     """
+    if len(metric_names) > 1:
+        return _query_metrics_multi(
+            view_type, db_type, query, metric_names, aggregations, dimensions,
+            filters, time_interval_seconds, max_results,
+        )
+
+    metric_name = metric_names[0]
+
     # Apply view-specific initial join
     query = _apply_view_initial_join(query, view_type)
 
@@ -758,9 +790,76 @@ def query_metrics(
     )
 
 
+def _query_metrics_multi(
+    view_type: MetricViewType,
+    db_type: str,
+    query: Query,
+    metric_names: list[str],
+    aggregations: list[MetricAggregation],
+    dimensions: list[str] | None,
+    filters: list[str] | None,
+    time_interval_seconds: int | None,
+    max_results: int,
+) -> list[MetricDataPoint]:
+    """Execute a single SQL query returning data for multiple metrics.
+
+    All metrics must aggregate the same column (SqlTraceMetrics.value for token metrics).
+    The metric key is added as an internal GROUP BY column and surfaced as metric_name on
+    each returned MetricDataPoint.
+    """
+    query = _apply_view_initial_join(query, view_type)
+    query = _apply_filters(query, filters, view_type)
+
+    # Join SqlTraceMetrics once, filtering to all requested metric keys
+    query = query.join(
+        SqlTraceMetrics,
+        and_(
+            SqlTraceInfo.request_id == SqlTraceMetrics.request_id,
+            SqlTraceMetrics.key.in_(metric_names),
+        ),
+    )
+    agg_column = SqlTraceMetrics.value
+
+    # Build user-specified dimension columns
+    dimension_columns = []
+    if time_interval_seconds:
+        time_bucket_expr = get_time_bucket_expression(view_type, time_interval_seconds, db_type)
+        dimension_columns.append(time_bucket_expr.label(TIME_BUCKET_LABEL))
+    for dimension in dimensions or []:
+        query, dimension_column = _apply_dimension_to_query(query, dimension, view_type, db_type)
+        dimension_columns.append(dimension_column)
+
+    # Append metric key as the last group-by dimension; result conversion extracts it as
+    # metric_name on each data point rather than exposing it as a user-visible dimension.
+    metric_name_col = SqlTraceMetrics.key.label(_METRIC_NAME_LABEL)
+    all_dimension_columns = dimension_columns + [metric_name_col]
+
+    if db_type in (db_types.MSSQL, db_types.MYSQL) and _has_percentile_aggregation(aggregations):
+        query, select_columns = _build_query_with_percentile_subquery(
+            db_type, query, aggregations, all_dimension_columns, agg_column
+        )
+    else:
+        select_columns = list(all_dimension_columns)
+        for agg in aggregations:
+            expr = _get_aggregation_expression(agg, db_type, agg_column)
+            select_columns.append(expr.label(str(agg)))
+
+        query = query.with_entities(*select_columns)
+
+        if all_dimension_columns:
+            group_by_columns = [col.element for col in all_dimension_columns]
+            query = query.group_by(*group_by_columns).order_by(*group_by_columns)
+
+    results = query.limit(max_results).all()
+
+    return convert_results_to_metric_data_points(
+        results, select_columns, len(all_dimension_columns), metric_name=None
+    )
+
+
 def validate_query_trace_metrics_params(
     view_type: MetricViewType,
-    metric_name: str,
+    metric_names: list[str],
     aggregations: list[MetricAggregation],
     dimensions: list[str] | None,
 ):
@@ -768,7 +867,7 @@ def validate_query_trace_metrics_params(
 
     Args:
         view_type: Type of metrics view (e.g., TRACES, SPANS, ASSESSMENTS)
-        metric_name: Name of the metric to query
+        metric_names: Names of the metrics to query
         aggregations: List of aggregations to compute
         dimensions: List of dimensions to group by
 
@@ -782,35 +881,39 @@ def validate_query_trace_metrics_params(
         )
 
     view_type_config = VIEW_TYPE_CONFIGS[view_type]
-    if metric_name not in view_type_config:
-        raise MlflowException.invalid_parameter_value(
-            f"metric_name must be one of {list(view_type_config.keys())}, got '{metric_name}'",
-        )
+    for metric_name in metric_names:
+        if metric_name not in view_type_config:
+            raise MlflowException.invalid_parameter_value(
+                f"metric_name must be one of {list(view_type_config.keys())}, got '{metric_name}'",
+            )
 
-    metrics_config = view_type_config[metric_name]
-    aggregation_types = [agg.aggregation_type for agg in aggregations]
-    if invalid_agg_types := (set(aggregation_types) - metrics_config.aggregation_types):
-        supported_aggs = sorted([a.value for a in metrics_config.aggregation_types])
-        invalid_aggs = sorted([a.value for a in invalid_agg_types])
-        raise MlflowException.invalid_parameter_value(
-            f"Found invalid aggregation_type(s): {invalid_aggs}. "
-            f"Supported aggregation types: {supported_aggs}",
-        )
+        metrics_config = view_type_config[metric_name]
+        aggregation_types = [agg.aggregation_type for agg in aggregations]
+        if invalid_agg_types := (set(aggregation_types) - metrics_config.aggregation_types):
+            supported_aggs = sorted([a.value for a in metrics_config.aggregation_types])
+            invalid_aggs = sorted([a.value for a in invalid_agg_types])
+            raise MlflowException.invalid_parameter_value(
+                f"Found invalid aggregation_type(s): {invalid_aggs}. "
+                f"Supported aggregation types: {supported_aggs}",
+            )
 
-    dimensions_list = dimensions or []
-    if invalid_dimensions := (set(dimensions_list) - metrics_config.dimensions):
-        supported_dims = sorted([d for d in metrics_config.dimensions if d is not None])
-        raise MlflowException.invalid_parameter_value(
-            f"Found invalid dimension(s): {sorted(invalid_dimensions)}. "
-            f"Supported dimensions: {supported_dims}",
-        )
+        dimensions_list = dimensions or []
+        if invalid_dimensions := (set(dimensions_list) - metrics_config.dimensions):
+            supported_dims = sorted([d for d in metrics_config.dimensions if d is not None])
+            raise MlflowException.invalid_parameter_value(
+                f"Found invalid dimension(s): {sorted(invalid_dimensions)}. "
+                f"Supported dimensions: {supported_dims}",
+            )
+
+    if len(metric_names) > 1:
+        _validate_metric_names_combinable(view_type, metric_names)
 
 
 def convert_results_to_metric_data_points(
     results: list[tuple[...]],
     select_columns: list[Column],
     num_dimensions: int,
-    metric_name: str,
+    metric_name: str | None,
 ) -> list[MetricDataPoint]:
     """
     Convert query results to MetricDataPoint objects.
@@ -819,7 +922,8 @@ def convert_results_to_metric_data_points(
         results: List of tuples containing query results
         select_columns: List of labeled column objects (dimensions + aggregations)
         num_dimensions: Number of dimension columns
-        metric_name: Name of the metric being queried
+        metric_name: Name of the metric being queried. Pass None for multi-metric queries
+            where metric_name is stored in the _METRIC_NAME_LABEL dimension column.
 
     Returns:
         List of MetricDataPoint objects
@@ -832,6 +936,10 @@ def convert_results_to_metric_data_points(
         # Skip data points with None dimension values
         if any(value is None for value in dims.values()):
             continue
+
+        # For multi-metric queries, metric_name is stored in the internal _METRIC_NAME_LABEL
+        # column rather than being fixed for the whole result set.
+        row_metric_name = dims.pop(_METRIC_NAME_LABEL, None) or metric_name
 
         # Convert time_bucket from milliseconds to ISO 8601 datetime string
         if TIME_BUCKET_LABEL in dims:
@@ -853,7 +961,7 @@ def convert_results_to_metric_data_points(
         data_points.append(
             MetricDataPoint(
                 dimensions=dims,
-                metric_name=metric_name,
+                metric_name=row_metric_name,
                 values=values,
             )
         )

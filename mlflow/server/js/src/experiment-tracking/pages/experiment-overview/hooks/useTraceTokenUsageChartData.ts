@@ -41,68 +41,30 @@ export interface UseTraceTokenUsageChartDataResult {
  *
  * @returns Processed chart data, loading state, and error state
  */
+// Stable array reference — defined outside the hook so it never triggers re-renders.
+const TOKEN_TIME_SERIES_METRIC_NAMES = [
+  TraceMetricKey.INPUT_TOKENS,
+  TraceMetricKey.OUTPUT_TOKENS,
+  TraceMetricKey.CACHE_READ_INPUT_TOKENS,
+  TraceMetricKey.CACHE_CREATION_INPUT_TOKENS,
+];
+
 export function useTraceTokenUsageChartData(): UseTraceTokenUsageChartDataResult {
   const { experimentIds, startTimeMs, endTimeMs, timeIntervalSeconds, timeBuckets, filters } =
     useOverviewChartContext();
-  // Fetch input tokens over time
-  const {
-    data: inputTokensData,
-    isLoading: isLoadingInput,
-    error: inputError,
-  } = useTraceMetricsQuery({
-    experimentIds,
-    startTimeMs,
-    endTimeMs,
-    viewType: MetricViewType.TRACES,
-    metricName: TraceMetricKey.INPUT_TOKENS,
-    aggregations: [{ aggregation_type: AggregationType.SUM }],
-    timeIntervalSeconds,
-    filters,
-  });
 
-  // Fetch output tokens over time
+  // Single multi-metric query replaces four separate per-metric queries (Q5–Q8).
+  // The server returns one row per (time_bucket, metric_name) combination.
   const {
-    data: outputTokensData,
-    isLoading: isLoadingOutput,
-    error: outputError,
+    data: tokenTimeSeriesData,
+    isLoading: isLoadingTokens,
+    error: tokenError,
   } = useTraceMetricsQuery({
     experimentIds,
     startTimeMs,
     endTimeMs,
     viewType: MetricViewType.TRACES,
-    metricName: TraceMetricKey.OUTPUT_TOKENS,
-    aggregations: [{ aggregation_type: AggregationType.SUM }],
-    timeIntervalSeconds,
-    filters,
-  });
-
-  // Fetch cache read tokens over time
-  const {
-    data: cacheReadTokensData,
-    isLoading: isLoadingCacheRead,
-    error: cacheReadError,
-  } = useTraceMetricsQuery({
-    experimentIds,
-    startTimeMs,
-    endTimeMs,
-    viewType: MetricViewType.TRACES,
-    metricName: TraceMetricKey.CACHE_READ_INPUT_TOKENS,
-    aggregations: [{ aggregation_type: AggregationType.SUM }],
-    timeIntervalSeconds,
-    filters,
-  });
-
-  // Fetch cache creation tokens over time
-  const {
-    data: cacheCreationTokensData,
-    isLoading: isLoadingCacheCreation,
-    error: cacheCreationError,
-  } = useTraceMetricsQuery({
-    experimentIds,
-    startTimeMs,
-    endTimeMs,
-    viewType: MetricViewType.TRACES,
-    metricName: TraceMetricKey.CACHE_CREATION_INPUT_TOKENS,
+    metricNames: TOKEN_TIME_SERIES_METRIC_NAMES,
     aggregations: [{ aggregation_type: AggregationType.SUM }],
     timeIntervalSeconds,
     filters,
@@ -123,15 +85,27 @@ export function useTraceTokenUsageChartData(): UseTraceTokenUsageChartDataResult
     filters,
   });
 
-  const inputDataPoints = useMemo(() => inputTokensData?.data_points || [], [inputTokensData?.data_points]);
-  const outputDataPoints = useMemo(() => outputTokensData?.data_points || [], [outputTokensData?.data_points]);
-  const cacheReadDataPoints = useMemo(() => cacheReadTokensData?.data_points || [], [cacheReadTokensData?.data_points]);
-  const cacheCreationDataPoints = useMemo(
-    () => cacheCreationTokensData?.data_points || [],
-    [cacheCreationTokensData?.data_points],
+  const allDataPoints = useMemo(() => tokenTimeSeriesData?.data_points || [], [tokenTimeSeriesData?.data_points]);
+
+  const inputDataPoints = useMemo(
+    () => allDataPoints.filter((dp) => dp.metric_name === TraceMetricKey.INPUT_TOKENS),
+    [allDataPoints],
   );
-  const isLoading = isLoadingInput || isLoadingOutput || isLoadingCacheRead || isLoadingCacheCreation || isLoadingTotal;
-  const error = inputError || outputError || cacheReadError || cacheCreationError || totalError;
+  const outputDataPoints = useMemo(
+    () => allDataPoints.filter((dp) => dp.metric_name === TraceMetricKey.OUTPUT_TOKENS),
+    [allDataPoints],
+  );
+  const cacheReadDataPoints = useMemo(
+    () => allDataPoints.filter((dp) => dp.metric_name === TraceMetricKey.CACHE_READ_INPUT_TOKENS),
+    [allDataPoints],
+  );
+  const cacheCreationDataPoints = useMemo(
+    () => allDataPoints.filter((dp) => dp.metric_name === TraceMetricKey.CACHE_CREATION_INPUT_TOKENS),
+    [allDataPoints],
+  );
+
+  const isLoading = isLoadingTokens || isLoadingTotal;
+  const error = tokenError || totalError;
 
   // Extract total tokens from the response
   const totalTokens = totalTokensData?.data_points?.[0]?.values?.[AggregationType.SUM] || 0;

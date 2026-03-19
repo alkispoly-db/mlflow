@@ -3680,8 +3680,15 @@ message QueryTraceMetrics {
   // Required: The level at which to aggregate metrics.
   optional MetricViewType view_type = 2;
 
-  // Required: The name of the metric to query (e.g. "latency").
+  // DEPRECATED. Use metric_names instead.
   optional string metric_name = 3;
+
+  // The name(s) of the metric(s) to query (e.g. ["latency"] or ["input_tokens", "output_tokens"]).
+  // Replaces the deprecated metric_name field. When multiple names are provided, all metrics must
+  // share the same aggregation semantics (currently: token metrics within the TRACES view). Each
+  // result data point carries a metric_name field so the caller can distinguish metrics.
+  // One of metric_name or metric_names is required.
+  repeated string metric_names = 12;
 
   // Required: The aggregations to apply.
   repeated MetricAggregation aggregations = 4;

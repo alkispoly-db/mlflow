@@ -1041,7 +1041,7 @@ class MetricAggregation(_message.Message):
     def __init__(self, aggregation_type: _Optional[_Union[AggregationType, str]] = ..., percentile_value: _Optional[float] = ...) -> None: ...
 
 class QueryTraceMetrics(_message.Message):
-    __slots__ = ("experiment_ids", "view_type", "metric_name", "aggregations", "dimensions", "filters", "time_interval_seconds", "start_time_ms", "end_time_ms", "max_results", "page_token")
+    __slots__ = ("experiment_ids", "view_type", "metric_name", "metric_names", "aggregations", "dimensions", "filters", "time_interval_seconds", "start_time_ms", "end_time_ms", "max_results", "page_token")
     class Response(_message.Message):
         __slots__ = ("data_points", "next_page_token")
         DATA_POINTS_FIELD_NUMBER: _ClassVar[int]
@@ -1052,6 +1052,7 @@ class QueryTraceMetrics(_message.Message):
     EXPERIMENT_IDS_FIELD_NUMBER: _ClassVar[int]
     VIEW_TYPE_FIELD_NUMBER: _ClassVar[int]
     METRIC_NAME_FIELD_NUMBER: _ClassVar[int]
+    METRIC_NAMES_FIELD_NUMBER: _ClassVar[int]
     AGGREGATIONS_FIELD_NUMBER: _ClassVar[int]
     DIMENSIONS_FIELD_NUMBER: _ClassVar[int]
     FILTERS_FIELD_NUMBER: _ClassVar[int]
@@ -1063,6 +1064,7 @@ class QueryTraceMetrics(_message.Message):
     experiment_ids: _containers.RepeatedScalarFieldContainer[str]
     view_type: MetricViewType
     metric_name: str
+    metric_names: _containers.RepeatedScalarFieldContainer[str]
     aggregations: _containers.RepeatedCompositeFieldContainer[MetricAggregation]
     dimensions: _containers.RepeatedScalarFieldContainer[str]
     filters: _containers.RepeatedScalarFieldContainer[str]
@@ -1071,7 +1073,7 @@ class QueryTraceMetrics(_message.Message):
     end_time_ms: int
     max_results: int
     page_token: str
-    def __init__(self, experiment_ids: _Optional[_Iterable[str]] = ..., view_type: _Optional[_Union[MetricViewType, str]] = ..., metric_name: _Optional[str] = ..., aggregations: _Optional[_Iterable[_Union[MetricAggregation, _Mapping]]] = ..., dimensions: _Optional[_Iterable[str]] = ..., filters: _Optional[_Iterable[str]] = ..., time_interval_seconds: _Optional[int] = ..., start_time_ms: _Optional[int] = ..., end_time_ms: _Optional[int] = ..., max_results: _Optional[int] = ..., page_token: _Optional[str] = ...) -> None: ...
+    def __init__(self, experiment_ids: _Optional[_Iterable[str]] = ..., view_type: _Optional[_Union[MetricViewType, str]] = ..., metric_name: _Optional[str] = ..., metric_names: _Optional[_Iterable[str]] = ..., aggregations: _Optional[_Iterable[_Union[MetricAggregation, _Mapping]]] = ..., dimensions: _Optional[_Iterable[str]] = ..., filters: _Optional[_Iterable[str]] = ..., time_interval_seconds: _Optional[int] = ..., start_time_ms: _Optional[int] = ..., end_time_ms: _Optional[int] = ..., max_results: _Optional[int] = ..., page_token: _Optional[str] = ...) -> None: ...
 
 class MetricDataPoint(_message.Message):
     __slots__ = ("metric_name", "dimensions", "values")

@@ -3919,7 +3919,8 @@ def _query_trace_metrics() -> Response:
         schema={
             "experiment_ids": [_assert_array, _assert_required, _assert_item_type_string],
             "view_type": [_assert_required],
-            "metric_name": [_assert_string, _assert_required],
+            "metric_name": [_assert_string],  # deprecated, no longer required
+            "metric_names": [_assert_array, _assert_item_type_string],
             "aggregations": [_assert_array, _assert_required],
             "dimensions": [_assert_array, _assert_item_type_string],
             "filters": [_assert_array, _assert_item_type_string],
@@ -3930,6 +3931,18 @@ def _query_trace_metrics() -> Response:
             "page_token": [_assert_string],
         },
     )
+
+    # Resolve metric name(s): prefer metric_names (plural); fall back to deprecated metric_name.
+    if request_message.metric_names:
+        metric_names = list(request_message.metric_names)
+    elif request_message.HasField("metric_name"):
+        metric_names = [request_message.metric_name]
+    else:
+        raise MlflowException(
+            "Either metric_name or metric_names is required.",
+            error_code=INVALID_PARAMETER_VALUE,
+        )
+
     max_results = (
         request_message.max_results
         if request_message.HasField("max_results")
@@ -3948,7 +3961,7 @@ def _query_trace_metrics() -> Response:
     result = _get_tracking_store().query_trace_metrics(
         experiment_ids=request_message.experiment_ids,
         view_type=MetricViewType.from_proto(request_message.view_type),
-        metric_name=request_message.metric_name,
+        metric_names=metric_names,
         aggregations=[MetricAggregation.from_proto(agg) for agg in request_message.aggregations],
         dimensions=request_message.dimensions or None,
         filters=request_message.filters or None,

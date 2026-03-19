@@ -61,7 +61,7 @@ def test_query_trace_metrics_count_no_dimensions(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
     )
 
@@ -98,7 +98,7 @@ def test_query_trace_metrics_count_by_status(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[TraceMetricDimensionKey.TRACE_STATUS],
     )
@@ -141,7 +141,7 @@ def test_query_trace_metrics_count_by_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -184,7 +184,7 @@ def test_query_trace_metrics_count_by_multiple_dimensions(store: SqlAlchemyStore
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[TraceMetricDimensionKey.TRACE_STATUS, TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -249,7 +249,7 @@ def test_query_trace_metrics_latency_avg(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.LATENCY,
+        metric_names=[TraceMetricKey.LATENCY],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -299,7 +299,7 @@ def test_query_trace_metrics_latency_percentiles(
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.LATENCY,
+        metric_names=[TraceMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(
                 aggregation_type=AggregationType.PERCENTILE, percentile_value=percentile_value
@@ -355,7 +355,7 @@ def test_query_trace_metrics_latency_percentile_identical_values(store: SqlAlche
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.LATENCY,
+        metric_names=[TraceMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.AVG),
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=50),
@@ -402,7 +402,7 @@ def test_query_trace_metrics_latency_multiple_aggregations(store: SqlAlchemyStor
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.LATENCY,
+        metric_names=[TraceMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.AVG),
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=95),
@@ -455,7 +455,7 @@ def test_query_trace_metrics_with_time_interval(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         time_interval_seconds=3600,  # 1 hour
         start_time_ms=base_time,
@@ -517,7 +517,7 @@ def test_query_trace_metrics_with_time_interval_and_dimensions(store: SqlAlchemy
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[TraceMetricDimensionKey.TRACE_STATUS],
         time_interval_seconds=3600,  # 1 hour
@@ -589,7 +589,7 @@ def test_query_trace_metrics_with_status_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.status = 'OK'"],
     )
@@ -604,7 +604,7 @@ def test_query_trace_metrics_with_status_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.status = 'ERROR'"],
     )
@@ -644,7 +644,7 @@ def test_query_trace_metrics_with_source_run_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=[f"trace.metadata.`{TraceMetadataKey.SOURCE_RUN}` = 'run_123'"],
     )
@@ -659,7 +659,7 @@ def test_query_trace_metrics_with_source_run_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=[f"trace.metadata.`{TraceMetadataKey.SOURCE_RUN}` = 'run_456'"],
     )
@@ -698,7 +698,7 @@ def test_query_trace_metrics_with_multiple_filters(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=[
             "trace.status = 'OK'",
@@ -743,7 +743,7 @@ def test_query_trace_metrics_with_tag_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.tag.tag1 = 'value1'"],
     )
@@ -753,7 +753,7 @@ def test_query_trace_metrics_with_tag_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.tag.`model.version` = 'model_v1'"],
     )
@@ -768,7 +768,7 @@ def test_query_trace_metrics_with_tag_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.tag.`model.version` = 'model_v2'"],
     )
@@ -813,7 +813,7 @@ def test_query_trace_metrics_with_invalid_filter(
         store.query_trace_metrics(
             experiment_ids=[exp_id],
             view_type=MetricViewType.TRACES,
-            metric_name=TraceMetricKey.TRACE_COUNT,
+            metric_names=[TraceMetricKey.TRACE_COUNT],
             aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
             filters=[filter_string],
         )
@@ -855,7 +855,7 @@ def test_query_trace_metrics_total_tokens_sum(traces_with_token_usage_setup):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        metric_names=[TraceMetricKey.TOTAL_TOKENS],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -879,7 +879,7 @@ def test_query_trace_metrics_total_tokens_avg(traces_with_token_usage_setup):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        metric_names=[TraceMetricKey.TOTAL_TOKENS],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -904,7 +904,7 @@ def test_query_trace_metrics_total_tokens_percentiles(traces_with_token_usage_se
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        metric_names=[TraceMetricKey.TOTAL_TOKENS],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=p)
             for p in percentiles
@@ -938,7 +938,7 @@ def test_query_trace_metrics_total_tokens_no_dimensions(traces_with_token_usage_
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        metric_names=[TraceMetricKey.TOTAL_TOKENS],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.SUM),
             MetricAggregation(aggregation_type=AggregationType.AVG),
@@ -951,6 +951,30 @@ def test_query_trace_metrics_total_tokens_no_dimensions(traces_with_token_usage_
         "dimensions": {},
         "values": {"SUM": 1500, "AVG": 300.0},
     }
+
+
+def test_query_trace_metrics_multi_metric_token_time_series(traces_with_token_usage_setup):
+    """Multiple token metrics are returned in a single SQL query, each data point tagged with
+    its metric_name. This is the O-U1 optimisation that replaces 4 separate API calls."""
+    exp_id, store = traces_with_token_usage_setup
+
+    result = store.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.TRACES,
+        metric_names=[TraceMetricKey.INPUT_TOKENS, TraceMetricKey.OUTPUT_TOKENS],
+        aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
+    )
+
+    # Expect one data point per metric (no dimension breakdown → one bucket total per metric)
+    by_metric = {dp.metric_name: dp for dp in result}
+    assert set(by_metric) == {TraceMetricKey.INPUT_TOKENS, TraceMetricKey.OUTPUT_TOKENS}
+
+    # workflow_a: input 100+200+150=450, output 50+100+75=225
+    # workflow_b: input 300+250=550,     output 150+125=275
+    assert by_metric[TraceMetricKey.INPUT_TOKENS].values == {"SUM": 1000}
+    assert by_metric[TraceMetricKey.OUTPUT_TOKENS].values == {"SUM": 500}
+    # metric_name is not exposed as a user-visible dimension
+    assert "_metric_name" not in by_metric[TraceMetricKey.INPUT_TOKENS].dimensions
 
 
 def test_query_trace_metrics_total_tokens_without_token_usage(store: SqlAlchemyStore):
@@ -970,7 +994,7 @@ def test_query_trace_metrics_total_tokens_without_token_usage(store: SqlAlchemyS
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        metric_names=[TraceMetricKey.TOTAL_TOKENS],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
     )
 
@@ -1017,7 +1041,7 @@ def test_query_trace_metrics_cache_read_input_tokens_sum(traces_with_cached_toke
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.CACHE_READ_INPUT_TOKENS,
+        metric_names=[TraceMetricKey.CACHE_READ_INPUT_TOKENS],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -1041,7 +1065,7 @@ def test_query_trace_metrics_cache_creation_input_tokens_sum(traces_with_cached_
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.CACHE_CREATION_INPUT_TOKENS,
+        metric_names=[TraceMetricKey.CACHE_CREATION_INPUT_TOKENS],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[TraceMetricDimensionKey.TRACE_NAME],
     )
@@ -1067,7 +1091,7 @@ def test_query_trace_metrics_cache_read_input_tokens_no_dimensions(
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.CACHE_READ_INPUT_TOKENS,
+        metric_names=[TraceMetricKey.CACHE_READ_INPUT_TOKENS],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.SUM),
             MetricAggregation(aggregation_type=AggregationType.AVG),
@@ -1107,7 +1131,7 @@ def test_query_span_metrics_count_no_dimensions(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
     )
 
@@ -1147,7 +1171,7 @@ def test_query_span_metrics_count_by_span_type(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_TYPE],
     )
@@ -1231,7 +1255,7 @@ def test_query_span_metrics_count_by_span_status(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_STATUS],
     )
@@ -1296,7 +1320,7 @@ def test_query_span_metrics_with_time_interval(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         time_interval_seconds=3600,  # 1 hour
         start_time_ms=base_time_ns // 1_000_000,
@@ -1374,7 +1398,7 @@ def test_query_span_metrics_with_time_interval_and_dimensions(store: SqlAlchemyS
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_TYPE],
         time_interval_seconds=3600,  # 1 hour
@@ -1467,7 +1491,7 @@ def test_query_span_metrics_with_filters(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.status = 'OK'"],
     )
@@ -1483,7 +1507,7 @@ def test_query_span_metrics_with_filters(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_TYPE],
         filters=["trace.status = 'ERROR'"],
@@ -1539,7 +1563,7 @@ def test_query_span_metrics_across_multiple_traces(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_TYPE],
     )
@@ -1639,7 +1663,7 @@ def test_query_span_metrics_with_span_status_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_TYPE],
         filters=["span.status = 'OK'"],
@@ -1693,7 +1717,7 @@ def test_query_span_metrics_with_span_name_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["span.name = 'generate_response'"],
     )
@@ -1730,7 +1754,7 @@ def test_query_span_metrics_with_span_type_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["span.type = 'TOOL'"],
     )
@@ -1777,7 +1801,7 @@ def test_query_span_metrics_invalid_filters(
         store.query_trace_metrics(
             experiment_ids=[exp_id],
             view_type=MetricViewType.SPANS,
-            metric_name=SpanMetricKey.SPAN_COUNT,
+            metric_names=[SpanMetricKey.SPAN_COUNT],
             aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
             filters=[filter_string],
         )
@@ -1822,7 +1846,7 @@ def test_query_span_metrics_count_by_span_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_NAME],
     )
@@ -1847,7 +1871,7 @@ def test_query_span_metrics_count_by_span_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_NAME],
         filters=["span.type = 'TOOL'"],
@@ -1886,7 +1910,7 @@ def test_query_span_metrics_count_by_span_name_and_type(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_NAME, SpanMetricDimensionKey.SPAN_TYPE],
     )
@@ -1967,7 +1991,7 @@ def test_query_span_metrics_latency_avg(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
     )
 
@@ -2042,7 +2066,7 @@ def test_query_span_metrics_latency_avg_by_span_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[SpanMetricDimensionKey.SPAN_NAME],
     )
@@ -2119,7 +2143,7 @@ def test_query_span_metrics_latency_by_span_status(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[SpanMetricDimensionKey.SPAN_STATUS],
     )
@@ -2205,7 +2229,7 @@ def test_query_span_metrics_latency_percentiles(
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(
                 aggregation_type=AggregationType.PERCENTILE, percentile_value=percentile_value
@@ -2292,7 +2316,7 @@ def test_query_span_metrics_latency_percentiles_by_span_name(store: SqlAlchemySt
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(
                 aggregation_type=AggregationType.PERCENTILE, percentile_value=percentile_value
@@ -2382,7 +2406,7 @@ def test_query_span_metrics_latency_multiple_aggregations(store: SqlAlchemyStore
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.AVG),
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=50),
@@ -2462,7 +2486,7 @@ def test_query_span_metrics_latency_by_span_name_and_status(store: SqlAlchemySto
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.LATENCY,
+        metric_names=[SpanMetricKey.LATENCY],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[SpanMetricDimensionKey.SPAN_NAME, SpanMetricDimensionKey.SPAN_STATUS],
     )
@@ -2537,7 +2561,7 @@ def test_query_assessment_metrics_count_no_dimensions(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
     )
 
@@ -2587,7 +2611,7 @@ def test_query_assessment_metrics_count_by_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -2648,7 +2672,7 @@ def test_query_assessment_metrics_count_by_value_and_name(store: SqlAlchemyStore
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[
             AssessmentMetricDimensionKey.ASSESSMENT_NAME,
@@ -2734,7 +2758,7 @@ def test_query_assessment_metrics_with_time_interval(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         time_interval_seconds=3600,  # 1 hour
         start_time_ms=base_time_ms,
@@ -2810,7 +2834,7 @@ def test_query_assessment_metrics_with_time_interval_and_dimensions(store: SqlAl
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
         time_interval_seconds=3600,  # 1 hour
@@ -2912,7 +2936,7 @@ def test_query_assessment_metrics_with_filters(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.status = 'OK'"],
     )
@@ -2928,7 +2952,7 @@ def test_query_assessment_metrics_with_filters(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["trace.status = 'ERROR'"],
     )
@@ -2976,7 +3000,7 @@ def test_query_assessment_metrics_across_multiple_traces(store: SqlAlchemyStore)
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3031,7 +3055,7 @@ def test_query_assessment_value_avg_by_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3085,7 +3109,7 @@ def test_query_assessment_value_with_boolean_values(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3134,7 +3158,7 @@ def test_query_assessment_value_with_yes_no_string_values(store: SqlAlchemyStore
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3195,7 +3219,7 @@ def test_query_assessment_value_percentiles(
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[
             MetricAggregation(
                 aggregation_type=AggregationType.PERCENTILE, percentile_value=percentile_value
@@ -3268,7 +3292,7 @@ def test_query_assessment_value_mixed_types(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3323,7 +3347,7 @@ def test_query_assessment_value_multiple_aggregations(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.AVG),
             MetricAggregation(aggregation_type=AggregationType.PERCENTILE, percentile_value=50),
@@ -3385,7 +3409,7 @@ def test_query_assessment_value_no_dimensions(
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
     )
 
@@ -3442,7 +3466,7 @@ def test_query_assessment_value_with_time_bucket(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         time_interval_seconds=3600,
         start_time_ms=base_time_ms,
@@ -3515,7 +3539,7 @@ def test_query_assessment_invalid_values(store: SqlAlchemyStore, assessment_type
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
     )
@@ -3560,7 +3584,7 @@ def test_query_assessment_value_with_null_value(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=["assessment_name"],
     )
@@ -3610,7 +3634,7 @@ def test_query_assessment_value_with_assessment_name_filter(store: SqlAlchemySto
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_VALUE],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
         filters=["assessment.name = 'accuracy'"],
@@ -3665,7 +3689,7 @@ def test_query_assessment_with_type_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["assessment.type = 'feedback'"],
     )
@@ -3681,7 +3705,7 @@ def test_query_assessment_with_type_filter(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=["assessment.type = 'expectation'"],
     )
@@ -3743,7 +3767,7 @@ def test_query_assessment_with_combined_name_and_type_filters(store: SqlAlchemyS
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.ASSESSMENTS,
-        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         filters=[
             "assessment.type = 'feedback'",
@@ -3801,7 +3825,7 @@ def test_query_assessments_metrics_invalid_filters(
         store.query_trace_metrics(
             experiment_ids=[exp_id],
             view_type=MetricViewType.ASSESSMENTS,
-            metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+            metric_names=[AssessmentMetricKey.ASSESSMENT_COUNT],
             aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
             filters=[filter_string],
         )
@@ -3872,7 +3896,7 @@ def test_query_span_metrics_cost_sum(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
     )
 
@@ -3949,7 +3973,7 @@ def test_query_span_metrics_cost_by_model_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_NAME],
     )
@@ -4017,7 +4041,7 @@ def test_query_span_metrics_cost_avg_by_model_name(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_NAME],
     )
@@ -4066,7 +4090,7 @@ def test_query_span_metrics_cost_multiple_aggregations(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[
             MetricAggregation(aggregation_type=AggregationType.SUM),
             MetricAggregation(aggregation_type=AggregationType.AVG),
@@ -4131,7 +4155,7 @@ def test_query_span_metrics_input_output_cost(store: SqlAlchemyStore):
     input_result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.INPUT_COST,
+        metric_names=[SpanMetricKey.INPUT_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
     )
     assert len(input_result) == 1
@@ -4144,7 +4168,7 @@ def test_query_span_metrics_input_output_cost(store: SqlAlchemyStore):
     output_result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.OUTPUT_COST,
+        metric_names=[SpanMetricKey.OUTPUT_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
     )
     assert len(output_result) == 1
@@ -4191,7 +4215,7 @@ def test_query_span_metrics_cost_across_multiple_traces(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_NAME],
     )
@@ -4241,7 +4265,7 @@ def test_query_span_metrics_cost_percentiles(store: SqlAlchemyStore, percentile_
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[
             MetricAggregation(
                 aggregation_type=AggregationType.PERCENTILE, percentile_value=percentile_value
@@ -4331,7 +4355,7 @@ def test_query_span_metrics_cost_by_model_provider(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_PROVIDER],
     )
@@ -4386,7 +4410,7 @@ def test_query_span_metrics_cost_avg_by_model_provider(store: SqlAlchemyStore):
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.AVG)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_PROVIDER],
     )
@@ -4467,7 +4491,7 @@ def test_query_span_metrics_cost_by_model_name_and_provider(store: SqlAlchemySto
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.TOTAL_COST,
+        metric_names=[SpanMetricKey.TOTAL_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[
             SpanMetricDimensionKey.SPAN_MODEL_NAME,
@@ -4555,7 +4579,7 @@ def test_query_span_metrics_input_output_cost_by_provider(store: SqlAlchemyStore
     result_input = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.INPUT_COST,
+        metric_names=[SpanMetricKey.INPUT_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_PROVIDER],
     )
@@ -4576,7 +4600,7 @@ def test_query_span_metrics_input_output_cost_by_provider(store: SqlAlchemyStore
     result_output = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.OUTPUT_COST,
+        metric_names=[SpanMetricKey.OUTPUT_COST],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.SUM)],
         dimensions=[SpanMetricDimensionKey.SPAN_MODEL_PROVIDER],
     )
@@ -4698,7 +4722,7 @@ def test_query_span_metrics_count_by_span_status_and_model_provider(store: SqlAl
     result = store.query_trace_metrics(
         experiment_ids=[exp_id],
         view_type=MetricViewType.SPANS,
-        metric_name=SpanMetricKey.SPAN_COUNT,
+        metric_names=[SpanMetricKey.SPAN_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[SpanMetricDimensionKey.SPAN_STATUS, SpanMetricDimensionKey.SPAN_MODEL_PROVIDER],
     )
