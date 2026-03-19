@@ -731,42 +731,43 @@ def query_metrics(
     Returns:
         List of MetricDataPoint objects
     """
-    match metric_names:
-        case [metric_name]:
-            pass
-        case _:
-            return _query_metrics_multi(
-                view_type,
-                db_type,
-                query,
-                metric_names,
-                aggregations,
-                dimensions,
-                filters,
-                time_interval_seconds,
-                max_results,
-            )
-
-    # Apply view-specific initial join
     query = _apply_view_initial_join(query, view_type)
-
     query = _apply_filters(query, filters, view_type)
 
-    # Apply metric-specific joins first, before dimensions
-    # This ensures tables like SqlSpanMetrics are available for dimension extraction
-    query = _apply_metric_specific_joins(query, metric_name, view_type)
-    agg_column = _get_column_to_aggregate(view_type, metric_name)
+    # Set up the join and aggregation column. For a single metric use the existing per-metric
+    # join helpers. For multiple metrics, join SqlTraceMetrics once with key IN (...) and add
+    # SqlTraceMetrics.key as an internal GROUP BY dimension so each data point carries its
+    # metric_name. Apply joins before dimensions so joined tables are available for dimension
+    # extraction (e.g. SqlSpanMetrics for cost dimensions).
+    match metric_names:
+        case [metric_name]:
+            query = _apply_metric_specific_joins(query, metric_name, view_type)
+            agg_column = _get_column_to_aggregate(view_type, metric_name)
+            result_metric_name: str | None = metric_name
+        case _:
+            query = query.join(
+                SqlTraceMetrics,
+                and_(
+                    SqlTraceInfo.request_id == SqlTraceMetrics.request_id,
+                    SqlTraceMetrics.key.in_(metric_names),
+                ),
+            )
+            agg_column = SqlTraceMetrics.value
+            result_metric_name = None
 
-    # Group by dimension columns, labeled for SELECT
+    # Build dimension columns (time bucket + user-requested dimensions)
     dimension_columns = []
-
     if time_interval_seconds:
         time_bucket_expr = get_time_bucket_expression(view_type, time_interval_seconds, db_type)
         dimension_columns.append(time_bucket_expr.label(TIME_BUCKET_LABEL))
-
     for dimension in dimensions or []:
         query, dimension_column = _apply_dimension_to_query(query, dimension, view_type, db_type)
         dimension_columns.append(dimension_column)
+
+    # Multi-metric: append metric key as last group-by; result conversion extracts it as
+    # metric_name on each data point rather than exposing it as a user-visible dimension.
+    if result_metric_name is None:
+        dimension_columns.append(SqlTraceMetrics.key.label(_METRIC_NAME_LABEL))
 
     # MSSQL and MySQL with percentile need special handling (window function requires subquery)
     if db_type in (db_types.MSSQL, db_types.MYSQL) and _has_percentile_aggregation(aggregations):
@@ -779,87 +780,15 @@ def query_metrics(
         for agg in aggregations:
             expr = _get_aggregation_expression(agg, db_type, agg_column)
             select_columns.append(expr.label(str(agg)))
-
         query = query.with_entities(*select_columns)
-
-        # Extract underlying column expressions from labeled columns for GROUP BY/ORDER BY
         if dimension_columns:
             group_by_columns = [col.element for col in dimension_columns]
-            query = query.group_by(*group_by_columns)
-            # order by time bucket first, then by other dimensions
-            query = query.order_by(*group_by_columns)
-
-    results = query.limit(max_results).all()
-
-    return convert_results_to_metric_data_points(
-        results, select_columns, len(dimension_columns), metric_name
-    )
-
-
-def _query_metrics_multi(
-    view_type: MetricViewType,
-    db_type: str,
-    query: Query,
-    metric_names: list[str],
-    aggregations: list[MetricAggregation],
-    dimensions: list[str] | None,
-    filters: list[str] | None,
-    time_interval_seconds: int | None,
-    max_results: int,
-) -> list[MetricDataPoint]:
-    """Execute a single SQL query returning data for multiple metrics.
-
-    All metrics must aggregate the same column (SqlTraceMetrics.value for token metrics).
-    The metric key is added as an internal GROUP BY column and surfaced as metric_name on
-    each returned MetricDataPoint.
-    """
-    query = _apply_view_initial_join(query, view_type)
-    query = _apply_filters(query, filters, view_type)
-
-    # Join SqlTraceMetrics once, filtering to all requested metric keys
-    query = query.join(
-        SqlTraceMetrics,
-        and_(
-            SqlTraceInfo.request_id == SqlTraceMetrics.request_id,
-            SqlTraceMetrics.key.in_(metric_names),
-        ),
-    )
-    agg_column = SqlTraceMetrics.value
-
-    # Build user-specified dimension columns
-    dimension_columns = []
-    if time_interval_seconds:
-        time_bucket_expr = get_time_bucket_expression(view_type, time_interval_seconds, db_type)
-        dimension_columns.append(time_bucket_expr.label(TIME_BUCKET_LABEL))
-    for dimension in dimensions or []:
-        query, dimension_column = _apply_dimension_to_query(query, dimension, view_type, db_type)
-        dimension_columns.append(dimension_column)
-
-    # Append metric key as the last group-by dimension; result conversion extracts it as
-    # metric_name on each data point rather than exposing it as a user-visible dimension.
-    metric_name_col = SqlTraceMetrics.key.label(_METRIC_NAME_LABEL)
-    all_dimension_columns = dimension_columns + [metric_name_col]
-
-    if db_type in (db_types.MSSQL, db_types.MYSQL) and _has_percentile_aggregation(aggregations):
-        query, select_columns = _build_query_with_percentile_subquery(
-            db_type, query, aggregations, all_dimension_columns, agg_column
-        )
-    else:
-        select_columns = list(all_dimension_columns)
-        for agg in aggregations:
-            expr = _get_aggregation_expression(agg, db_type, agg_column)
-            select_columns.append(expr.label(str(agg)))
-
-        query = query.with_entities(*select_columns)
-
-        if all_dimension_columns:
-            group_by_columns = [col.element for col in all_dimension_columns]
             query = query.group_by(*group_by_columns).order_by(*group_by_columns)
 
     results = query.limit(max_results).all()
 
     return convert_results_to_metric_data_points(
-        results, select_columns, len(all_dimension_columns), metric_name=None
+        results, select_columns, len(dimension_columns), result_metric_name
     )
 
 
