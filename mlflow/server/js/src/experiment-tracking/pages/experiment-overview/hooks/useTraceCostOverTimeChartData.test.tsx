@@ -408,7 +408,7 @@ describe('useTraceCostOverTimeChartData', () => {
         expect(capturedBody).not.toBeNull();
       });
 
-      expect(capturedBody.metric_name).toBe(SpanMetricKey.TOTAL_COST);
+      expect(capturedBody.metric_names).toEqual([SpanMetricKey.TOTAL_COST]);
     });
 
     it('should include time interval in API call', async () => {

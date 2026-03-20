@@ -3667,7 +3667,7 @@ def test_query_trace_metrics():
         json_body = call_args["json"]
         assert json_body["experiment_ids"] == experiment_ids
         assert json_body["view_type"] == "SPANS"
-        assert json_body["metric_name"] == metric_name
+        assert json_body["metric_names"] == [metric_name]
         assert json_body["max_results"] == max_results
         assert json_body["dimensions"] == dimensions
         assert json_body["filters"] == filters

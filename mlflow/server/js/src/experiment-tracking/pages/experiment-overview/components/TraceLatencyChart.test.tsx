@@ -273,7 +273,7 @@ describe('TraceLatencyChart', () => {
         expect(capturedPercentileRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.LATENCY,
+          metric_names: [TraceMetricKey.LATENCY],
           aggregations: [
             { aggregation_type: AggregationType.PERCENTILE, percentile_value: P50 },
             { aggregation_type: AggregationType.PERCENTILE, percentile_value: P90 },
@@ -303,7 +303,7 @@ describe('TraceLatencyChart', () => {
         expect(capturedAvgRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.LATENCY,
+          metric_names: [TraceMetricKey.LATENCY],
           aggregations: [{ aggregation_type: AggregationType.AVG }],
         });
       });

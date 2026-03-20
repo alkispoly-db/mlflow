@@ -231,7 +231,7 @@ describe('TraceRequestsChart', () => {
         expect(capturedRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.TRACE_COUNT,
+          metric_names: [TraceMetricKey.TRACE_COUNT],
           aggregations: [{ aggregation_type: AggregationType.COUNT }],
         });
       });

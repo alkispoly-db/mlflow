@@ -299,7 +299,7 @@ describe('TraceAssessmentChart', () => {
         expect(capturedTimeSeriesRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.ASSESSMENTS,
-          metric_name: AssessmentMetricKey.ASSESSMENT_VALUE,
+          metric_names: [AssessmentMetricKey.ASSESSMENT_VALUE],
           aggregations: [{ aggregation_type: AggregationType.AVG }],
           filters: [`assessment.${AssessmentFilterKey.NAME} = "${testAssessmentName}"`],
         });

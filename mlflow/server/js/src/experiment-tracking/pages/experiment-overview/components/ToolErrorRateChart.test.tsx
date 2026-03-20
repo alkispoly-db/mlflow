@@ -193,7 +193,7 @@ describe('ToolErrorRateChart', () => {
       expect(capturedBody).toMatchObject({
         experiment_ids: [testExperimentId],
         view_type: MetricViewType.SPANS,
-        metric_name: SpanMetricKey.SPAN_COUNT,
+        metric_names: [SpanMetricKey.SPAN_COUNT],
         aggregations: [{ aggregation_type: AggregationType.COUNT }],
       });
     });

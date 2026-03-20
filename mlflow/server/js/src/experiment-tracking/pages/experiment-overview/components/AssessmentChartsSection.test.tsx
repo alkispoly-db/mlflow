@@ -286,7 +286,7 @@ describe('AssessmentChartsSection', () => {
         expect(capturedCountRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.ASSESSMENTS,
-          metric_name: AssessmentMetricKey.ASSESSMENT_COUNT,
+          metric_names: [AssessmentMetricKey.ASSESSMENT_COUNT],
           aggregations: [{ aggregation_type: AggregationType.COUNT }],
           dimensions: [AssessmentDimensionKey.ASSESSMENT_NAME],
           filters: [`assessment.${AssessmentFilterKey.TYPE} = "${AssessmentTypeValue.FEEDBACK}"`],
@@ -313,7 +313,7 @@ describe('AssessmentChartsSection', () => {
         expect(capturedAvgRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.ASSESSMENTS,
-          metric_name: AssessmentMetricKey.ASSESSMENT_VALUE,
+          metric_names: [AssessmentMetricKey.ASSESSMENT_VALUE],
           aggregations: [{ aggregation_type: AggregationType.AVG }],
           dimensions: [AssessmentDimensionKey.ASSESSMENT_NAME],
           filters: [`assessment.${AssessmentFilterKey.TYPE} = "${AssessmentTypeValue.FEEDBACK}"`],

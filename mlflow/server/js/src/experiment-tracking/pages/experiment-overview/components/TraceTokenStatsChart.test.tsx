@@ -297,7 +297,7 @@ describe('TraceTokenStatsChart', () => {
         expect(capturedPercentileRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.TOTAL_TOKENS,
+          metric_names: [TraceMetricKey.TOTAL_TOKENS],
           aggregations: [
             { aggregation_type: AggregationType.PERCENTILE, percentile_value: P50 },
             { aggregation_type: AggregationType.PERCENTILE, percentile_value: P90 },
@@ -327,7 +327,7 @@ describe('TraceTokenStatsChart', () => {
         expect(capturedAvgRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.TOTAL_TOKENS,
+          metric_names: [TraceMetricKey.TOTAL_TOKENS],
           aggregations: [{ aggregation_type: AggregationType.AVG }],
         });
       });

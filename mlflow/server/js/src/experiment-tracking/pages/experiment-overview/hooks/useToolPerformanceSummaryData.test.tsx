@@ -315,7 +315,7 @@ describe('useToolPerformanceSummaryData', () => {
         expect(capturedBodies.length).toBeGreaterThanOrEqual(2);
       });
 
-      const countRequest = capturedBodies.find((b) => b.metric_name === SpanMetricKey.SPAN_COUNT);
+      const countRequest = capturedBodies.find((b) => b.metric_names?.[0] === SpanMetricKey.SPAN_COUNT);
       expect(countRequest.dimensions).toContain(SpanDimensionKey.SPAN_NAME);
       expect(countRequest.dimensions).toContain(SpanDimensionKey.SPAN_STATUS);
     });
@@ -338,7 +338,7 @@ describe('useToolPerformanceSummaryData', () => {
         expect(capturedBodies.length).toBeGreaterThanOrEqual(2);
       });
 
-      const latencyRequest = capturedBodies.find((b) => b.metric_name === SpanMetricKey.LATENCY);
+      const latencyRequest = capturedBodies.find((b) => b.metric_names?.[0] === SpanMetricKey.LATENCY);
       expect(latencyRequest.dimensions).toContain(SpanDimensionKey.SPAN_NAME);
     });
 

@@ -338,7 +338,7 @@ describe('TraceCostOverTimeChart', () => {
         expect(capturedRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.SPANS,
-          metric_name: SpanMetricKey.TOTAL_COST,
+          metric_names: [SpanMetricKey.TOTAL_COST],
           aggregations: [{ aggregation_type: AggregationType.SUM }],
           dimensions: [SpanDimensionKey.MODEL_NAME],
           time_interval_seconds: timeIntervalSeconds,
