@@ -47,7 +47,7 @@ export function useTraceRequestsChartData(): UseTraceRequestsChartDataResult {
     useOverviewChartContext();
   // Fetch trace count metrics grouped by time bucket and trace status.
   // Adding TRACE_STATUS dimension allows React Query to deduplicate this query
-  // with the errors chart (O-U2 optimization: Q1+Q4 merged into 1 SQL query).
+  // with the errors chart, reducing the number of SQL queries.
   const {
     data: traceCountData,
     isLoading,

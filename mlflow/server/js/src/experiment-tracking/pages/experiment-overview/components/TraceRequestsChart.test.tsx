@@ -4,7 +4,12 @@ import { renderWithIntl } from '../../../../common/utils/TestUtils.react18';
 import { TraceRequestsChart } from './TraceRequestsChart';
 import { DesignSystemProvider } from '@databricks/design-system';
 import { QueryClient, QueryClientProvider } from '@mlflow/mlflow/src/common/utils/reactQueryHooks';
-import { MetricViewType, AggregationType, TraceMetricKey, TraceDimensionKey } from '@databricks/web-shared/model-trace-explorer';
+import {
+  MetricViewType,
+  AggregationType,
+  TraceMetricKey,
+  TraceDimensionKey,
+} from '@databricks/web-shared/model-trace-explorer';
 import { setupServer } from '../../../../common/utils/setup-msw';
 import { rest } from 'msw';
 import { OverviewChartProvider } from '../OverviewChartContext';

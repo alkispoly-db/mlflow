@@ -39,7 +39,7 @@ export interface UseTraceErrorsChartDataResult {
  * Custom hook that fetches and processes errors chart data.
  *
  * Uses the same TRACE_COUNT query with TRACE_STATUS dimension as the requests chart,
- * so React Query deduplicates it to a single SQL execution (O-U2 optimization).
+ * so React Query deduplicates it to a single SQL execution.
  * Error counts are extracted from the ERROR status rows; total counts are the sum
  * of all status rows.
  *
