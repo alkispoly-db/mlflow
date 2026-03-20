@@ -106,7 +106,7 @@ describe('TraceAssessmentChart', () => {
     server.use(
       rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
         const body = await req.json();
-        if (body.metric_name === AssessmentMetricKey.ASSESSMENT_COUNT) {
+        if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_COUNT) {
           return res(ctx.json({ data_points: distributionData }));
         }
         return res(ctx.json({ data_points: timeSeriesData }));
@@ -286,7 +286,7 @@ describe('TraceAssessmentChart', () => {
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
           // Only capture the time series request (ASSESSMENT_VALUE metric)
-          if (body.metric_name === AssessmentMetricKey.ASSESSMENT_VALUE) {
+          if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_VALUE) {
             capturedTimeSeriesRequest = body;
           }
           return res(ctx.json({ data_points: [] }));

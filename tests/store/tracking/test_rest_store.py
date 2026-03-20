@@ -3651,7 +3651,7 @@ def test_query_trace_metrics():
         result = store.query_trace_metrics(
             experiment_ids=experiment_ids,
             view_type=view_type,
-            metric_name=metric_name,
+            metric_names=[metric_name],
             aggregations=aggregations,
             dimensions=dimensions,
             filters=filters,

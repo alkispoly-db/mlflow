@@ -93,7 +93,8 @@ describe('TraceTokenUsageChart', () => {
     );
   };
 
-  // Helper to setup MSW handler for trace metrics endpoint with routing based on metric_name
+  // Helper to setup MSW handler for trace metrics endpoint.
+  // Handles both batched metric_names (array) and singular metric_names ([single]) requests.
   const setupTraceMetricsHandler = (
     inputDataPoints: any[],
     outputDataPoints: any[],
@@ -101,22 +102,20 @@ describe('TraceTokenUsageChart', () => {
     cacheReadDataPoints: any[] = [],
     cacheCreationDataPoints: any[] = [],
   ) => {
+    const dataByMetric: Record<string, any[]> = {
+      [TraceMetricKey.INPUT_TOKENS]: inputDataPoints,
+      [TraceMetricKey.OUTPUT_TOKENS]: outputDataPoints,
+      [TraceMetricKey.TOTAL_TOKENS]: totalDataPoints,
+      [TraceMetricKey.CACHE_READ_INPUT_TOKENS]: cacheReadDataPoints,
+      [TraceMetricKey.CACHE_CREATION_INPUT_TOKENS]: cacheCreationDataPoints,
+    };
     server.use(
       rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
         const body = await req.json();
-        const metricName = body.metric_name;
-        if (metricName === TraceMetricKey.INPUT_TOKENS) {
-          return res(ctx.json({ data_points: inputDataPoints }));
-        } else if (metricName === TraceMetricKey.OUTPUT_TOKENS) {
-          return res(ctx.json({ data_points: outputDataPoints }));
-        } else if (metricName === TraceMetricKey.TOTAL_TOKENS) {
-          return res(ctx.json({ data_points: totalDataPoints }));
-        } else if (metricName === TraceMetricKey.CACHE_READ_INPUT_TOKENS) {
-          return res(ctx.json({ data_points: cacheReadDataPoints }));
-        } else if (metricName === TraceMetricKey.CACHE_CREATION_INPUT_TOKENS) {
-          return res(ctx.json({ data_points: cacheCreationDataPoints }));
-        }
-        return res(ctx.json({ data_points: [] }));
+        const metricNames: string[] = body.metric_names ?? [];
+        // Return combined data points for all requested metrics
+        const dataPoints = metricNames.flatMap((name: string) => dataByMetric[name] ?? []);
+        return res(ctx.json({ data_points: dataPoints }));
       }),
     );
   };
@@ -360,14 +359,15 @@ describe('TraceTokenUsageChart', () => {
   });
 
   describe('API call parameters', () => {
-    it('should call API for input tokens with correct parameters', async () => {
-      let capturedInputRequest: any = null;
+    it('should call batched API for token time-series with correct parameters', async () => {
+      let capturedBatchRequest: any = null;
 
       server.use(
         rest.post('ajax-api/3.0/mlflow/traces/metrics', async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === TraceMetricKey.INPUT_TOKENS) {
-            capturedInputRequest = body;
+          // The batched query sends all 4 token metrics at once
+          if (body.metric_names?.length > 1) {
+            capturedBatchRequest = body;
           }
           return res(ctx.json({ data_points: [] }));
         }),
@@ -376,36 +376,15 @@ describe('TraceTokenUsageChart', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(capturedInputRequest).toMatchObject({
+        expect(capturedBatchRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.INPUT_TOKENS,
-          aggregations: [{ aggregation_type: AggregationType.SUM }],
-          time_interval_seconds: 3600,
-        });
-      });
-    });
-
-    it('should call API for output tokens with correct parameters', async () => {
-      let capturedOutputRequest: any = null;
-
-      server.use(
-        rest.post('ajax-api/3.0/mlflow/traces/metrics', async (req, res, ctx) => {
-          const body = await req.json();
-          if (body.metric_name === TraceMetricKey.OUTPUT_TOKENS) {
-            capturedOutputRequest = body;
-          }
-          return res(ctx.json({ data_points: [] }));
-        }),
-      );
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(capturedOutputRequest).toMatchObject({
-          experiment_ids: [testExperimentId],
-          view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.OUTPUT_TOKENS,
+          metric_names: [
+            TraceMetricKey.INPUT_TOKENS,
+            TraceMetricKey.OUTPUT_TOKENS,
+            TraceMetricKey.CACHE_READ_INPUT_TOKENS,
+            TraceMetricKey.CACHE_CREATION_INPUT_TOKENS,
+          ],
           aggregations: [{ aggregation_type: AggregationType.SUM }],
           time_interval_seconds: 3600,
         });
@@ -418,7 +397,7 @@ describe('TraceTokenUsageChart', () => {
       server.use(
         rest.post('ajax-api/3.0/mlflow/traces/metrics', async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === TraceMetricKey.TOTAL_TOKENS) {
+          if (body.metric_names?.[0] === TraceMetricKey.TOTAL_TOKENS) {
             capturedTotalRequest = body;
           }
           return res(ctx.json({ data_points: [] }));
@@ -431,7 +410,7 @@ describe('TraceTokenUsageChart', () => {
         expect(capturedTotalRequest).toMatchObject({
           experiment_ids: [testExperimentId],
           view_type: MetricViewType.TRACES,
-          metric_name: TraceMetricKey.TOTAL_TOKENS,
+          metric_names: [TraceMetricKey.TOTAL_TOKENS],
           aggregations: [{ aggregation_type: AggregationType.SUM }],
         });
         // Should NOT have time_interval_seconds for total tokens query
@@ -445,7 +424,8 @@ describe('TraceTokenUsageChart', () => {
       server.use(
         rest.post('ajax-api/3.0/mlflow/traces/metrics', async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === TraceMetricKey.INPUT_TOKENS) {
+          // Capture the batched token query
+          if (body.metric_names?.length > 1) {
             capturedRequest = body;
           }
           return res(ctx.json({ data_points: [] }));

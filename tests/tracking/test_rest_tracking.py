@@ -2895,7 +2895,7 @@ def test_query_trace_metrics(mlflow_client, store_type):
     metrics = mlflow_client._tracing_client.store.query_trace_metrics(
         experiment_ids=[experiment_id],
         view_type=MetricViewType.TRACES,
-        metric_name=TraceMetricKey.TRACE_COUNT,
+        metric_names=[TraceMetricKey.TRACE_COUNT],
         aggregations=[MetricAggregation(aggregation_type=AggregationType.COUNT)],
         dimensions=[TraceMetricDimensionKey.TRACE_STATUS],
     )

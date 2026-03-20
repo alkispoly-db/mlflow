@@ -76,7 +76,7 @@ describe('ToolCallStatistics', () => {
     server.use(
       rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
         const body = await req.json();
-        if (body.metric_name === SpanMetricKey.LATENCY) {
+        if (body.metric_names?.[0] === SpanMetricKey.LATENCY) {
           return res(ctx.json({ data_points: latencyDataPoints }));
         }
         return res(ctx.json({ data_points: countDataPoints }));
@@ -250,7 +250,7 @@ describe('ToolCallStatistics', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === SpanMetricKey.LATENCY) {
+          if (body.metric_names?.[0] === SpanMetricKey.LATENCY) {
             return res(ctx.json({ data_points: [createLatencyDataPoint(100)] }));
           }
           return res(ctx.status(500), ctx.json({ error: 'Counts API Error' }));
@@ -268,7 +268,7 @@ describe('ToolCallStatistics', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === SpanMetricKey.LATENCY) {
+          if (body.metric_names?.[0] === SpanMetricKey.LATENCY) {
             return res(ctx.status(500), ctx.json({ error: 'Latency API Error' }));
           }
           return res(ctx.json({ data_points: [createCountByStatusDataPoint('OK', 100)] }));
@@ -290,7 +290,7 @@ describe('ToolCallStatistics', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === SpanMetricKey.SPAN_COUNT) {
+          if (body.metric_names?.[0] === SpanMetricKey.SPAN_COUNT) {
             capturedCountsBody = body;
           }
           return res(ctx.json({ data_points: [] }));
@@ -319,7 +319,7 @@ describe('ToolCallStatistics', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === SpanMetricKey.LATENCY) {
+          if (body.metric_names?.[0] === SpanMetricKey.LATENCY) {
             capturedLatencyBody = body;
           }
           return res(ctx.json({ data_points: [] }));

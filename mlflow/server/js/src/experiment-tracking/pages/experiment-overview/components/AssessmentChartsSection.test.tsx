@@ -85,7 +85,7 @@ describe('AssessmentChartsSection', () => {
     server.use(
       rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
         const body = await req.json();
-        if (body.metric_name === AssessmentMetricKey.ASSESSMENT_COUNT) {
+        if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_COUNT) {
           return res(ctx.json({ data_points: countData }));
         }
         // ASSESSMENT_VALUE query
@@ -153,7 +153,7 @@ describe('AssessmentChartsSection', () => {
           // If query has no time range (from useHasAssessmentsOutsideTimeRange), return data
           // Note: undefined values are omitted when serialized to JSON, so we check if the property doesn't exist
           const hasNoTimeRange = !('start_time_ms' in body) || body.start_time_ms === null;
-          if (hasNoTimeRange && body.metric_name === AssessmentMetricKey.ASSESSMENT_COUNT) {
+          if (hasNoTimeRange && body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_COUNT) {
             return res(ctx.json({ data_points: [createCountDataPoint('SomeAssessment', 10)] }));
           }
           // Time-filtered queries return empty
@@ -273,7 +273,7 @@ describe('AssessmentChartsSection', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === AssessmentMetricKey.ASSESSMENT_COUNT) {
+          if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_COUNT) {
             capturedCountRequest = body;
           }
           return res(ctx.json({ data_points: [] }));
@@ -300,7 +300,7 @@ describe('AssessmentChartsSection', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === AssessmentMetricKey.ASSESSMENT_VALUE) {
+          if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_VALUE) {
             capturedAvgRequest = body;
           }
           return res(ctx.json({ data_points: [] }));
@@ -327,7 +327,7 @@ describe('AssessmentChartsSection', () => {
       server.use(
         rest.post(getAjaxUrl('ajax-api/3.0/mlflow/traces/metrics'), async (req, res, ctx) => {
           const body = await req.json();
-          if (body.metric_name === AssessmentMetricKey.ASSESSMENT_COUNT) {
+          if (body.metric_names?.[0] === AssessmentMetricKey.ASSESSMENT_COUNT) {
             capturedCountRequest = body;
           }
           return res(ctx.json({ data_points: [] }));
