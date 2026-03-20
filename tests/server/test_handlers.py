@@ -3084,7 +3084,6 @@ def test_query_trace_metrics_handler_empty_result(mock_get_request_message, mock
 
 
 def test_query_trace_metrics_handler_multi_metric(mock_get_request_message, mock_tracking_store):
-    """metric_names with multiple values is passed through to the store as a list."""
     metric_names = ["input_tokens", "output_tokens"]
     request_msg = QueryTraceMetrics(
         experiment_ids=["exp1"],

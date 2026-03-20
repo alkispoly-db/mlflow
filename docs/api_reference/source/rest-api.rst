@@ -7280,7 +7280,12 @@ Query aggregated metrics for traces, spans, or assessments.
 +-----------------------+--------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
 | view_type             | :ref:`mlflowmetricviewtype`                | Required: The level at which to aggregate metrics.                                                                              |
 +-----------------------+--------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
-| metric_name           | ``STRING``                                 | Required: The name of the metric to query (e.g. "latency").                                                                     |
+| metric_name           | ``STRING``                                 | DEPRECATED. Use metric_names instead.                                                                                           |
++-----------------------+--------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
+| metric_names          | An array of ``STRING``                     | The name(s) of the metric(s) to query (e.g. ["latency"] or ["input_tokens", "output_tokens"]). Replaces the deprecated          |
+|                       |                                            | metric_name field. When multiple names are provided, all metrics must share the same aggregation semantics (currently: token    |
+|                       |                                            | metrics within the TRACES view). Each result data point carries a metric_name field so the caller can distinguish metrics. One  |
+|                       |                                            | of metric_name or metric_names is required.                                                                                     |
 +-----------------------+--------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
 | aggregations          | An array of :ref:`mlflowmetricaggregation` | Required: The aggregations to apply.                                                                                            |
 +-----------------------+--------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+

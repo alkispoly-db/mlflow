@@ -954,8 +954,6 @@ def test_query_trace_metrics_total_tokens_no_dimensions(traces_with_token_usage_
 
 
 def test_query_trace_metrics_multi_metric_token_time_series(traces_with_token_usage_setup):
-    """Multiple token metrics are returned in a single SQL query, each data point tagged with
-    its metric_name. This is the O-U1 optimisation that replaces 4 separate API calls."""
     exp_id, store = traces_with_token_usage_setup
 
     result = store.query_trace_metrics(

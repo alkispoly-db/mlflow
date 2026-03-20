@@ -10,8 +10,10 @@ import {
 
 const TRACE_METRICS_QUERY_KEY = 'traceMetrics';
 
-// Extends the shared request type with the new metric_names field not yet in the package.
-type TraceMetricsRequestBody = QueryTraceMetricsRequest & { metric_names?: string[] };
+// Extends the shared request type: metric_name is deprecated in favor of metric_names,
+// so we make metric_name optional and add the new field.
+type TraceMetricsRequestBody = Omit<QueryTraceMetricsRequest, 'metric_name'> &
+  Partial<Pick<QueryTraceMetricsRequest, 'metric_name'>> & { metric_names?: string[] };
 
 /**
  * Query aggregated trace metrics for experiments

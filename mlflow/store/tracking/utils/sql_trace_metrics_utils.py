@@ -457,8 +457,7 @@ def _validate_metric_names_combinable(view_type: MetricViewType, metric_names: l
             f"Multiple metric_names is only supported for the TRACES view type, got '{view_type}'."
         )
     token_keys = set(TraceMetricKey.token_usage_keys())
-    non_token = [m for m in metric_names if m not in token_keys]
-    if non_token:
+    if non_token := [m for m in metric_names if m not in token_keys]:
         raise MlflowException.invalid_parameter_value(
             f"Multiple metric_names is only supported for token metrics "
             f"({sorted(token_keys)}). Got unsupported metric(s): {non_token}."
