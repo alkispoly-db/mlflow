@@ -398,6 +398,7 @@ class SqlMetric(Base):
             "key", "timestamp", "step", "run_uuid", "value", "is_nan", name="metric_pk"
         ),
         Index(f"index_{__tablename__}_run_uuid", "run_uuid"),
+        Index(f"index_{__tablename__}_run_uuid_key_step", "run_uuid", "key", "step"),
     )
 
     key = Column(String(250))
@@ -1193,6 +1194,7 @@ class SqlIssue(Base):
         Index(f"index_{__tablename__}_experiment_id", "experiment_id"),
         Index(f"index_{__tablename__}_source_run_id", "source_run_id"),
         Index(f"index_{__tablename__}_status", "status"),
+        Index(f"index_{__tablename__}_created_by", "created_by"),
     )
 
     def __repr__(self):
@@ -2319,6 +2321,12 @@ class SqlJob(Base):
     Last Update time of experiment: `BigInteger`.
     """
 
+    status_details = Column(MutableJSON, nullable=True)
+    """
+    Job status details: `JSON`.
+    Stores additional job status details.
+    """
+
     __table_args__ = (
         PrimaryKeyConstraint("id", name="jobs_pk"),
         Index(
@@ -2354,6 +2362,7 @@ class SqlJob(Base):
             retry_count=self.retry_count,
             last_update_time=self.last_update_time,
             workspace=self.workspace,
+            status_details=self.status_details,
         )
 
 

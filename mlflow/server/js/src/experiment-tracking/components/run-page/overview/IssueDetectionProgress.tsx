@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import {
   Button,
   CheckCircleIcon,
+  DesignSystemEventProviderAnalyticsEventTypes,
+  DesignSystemEventProviderComponentTypes,
   ParagraphSkeleton,
   XCircleIcon,
   Typography,
@@ -16,6 +18,7 @@ import Utils from '../../../../common/utils/Utils';
 import { useSearchIssuesQuery } from '../hooks/useSearchIssuesQuery';
 import { JobStatus, isJobComplete } from '../hooks/useFetchJobStatus';
 import { useCancelJob } from '../hooks/useCancelJob';
+import { useLogTelemetryEvent } from '../../../../telemetry/hooks/useLogTelemetryEvent';
 
 export interface IssueJobResult {
   issues?: number;
@@ -29,6 +32,8 @@ export interface IssueDetectionProgressProps {
   jobId?: string;
   /** Job status from parent */
   jobStatus?: JobStatus;
+  /** Current job stage */
+  jobStage?: string;
   /** Total traces count */
   totalTraces?: number;
   /** Job result data */
@@ -44,6 +49,7 @@ export interface IssueDetectionProgressProps {
 export const IssueDetectionProgress = ({
   jobId,
   jobStatus,
+  jobStage,
   totalTraces,
   result,
   isLoadingJobStatus,
@@ -52,6 +58,7 @@ export const IssueDetectionProgress = ({
 }: IssueDetectionProgressProps) => {
   const { theme } = useDesignSystemTheme();
   const intl = useIntl();
+  const logTelemetryEvent = useLogTelemetryEvent();
   const navigate = useNavigate();
   const { experimentId, runUuid } = useParams<{ experimentId: string; runUuid: string }>();
   const { cancelJob, isCancelling } = useCancelJob();
@@ -101,6 +108,23 @@ export const IssueDetectionProgress = ({
   });
 
   const identifiedIssues = issues.length;
+
+  useEffect(() => {
+    if (isJobSucceeded && runUuid) {
+      logTelemetryEvent({
+        componentId: 'mlflow.issue-detection.completed',
+        componentType: DesignSystemEventProviderComponentTypes.Card,
+        // Use runUuid as componentViewId to track the same eval result across sessions
+        componentViewId: runUuid ?? '',
+        eventType: DesignSystemEventProviderAnalyticsEventTypes.OnView,
+        value: JSON.stringify({
+          totalTraces,
+          identifiedIssues: result?.issues,
+          totalCostUsd: result?.total_cost_usd,
+        }),
+      });
+    }
+  }, [isJobSucceeded, runUuid, totalTraces, result?.issues, result?.total_cost_usd, logTelemetryEvent]);
 
   if (isLoadingJobStatus) {
     return (
@@ -184,10 +208,12 @@ export const IssueDetectionProgress = ({
                 defaultMessage="Issue detection canceled"
                 description="Issue detection progress > Step label when canceled"
               />
+            ) : jobStage ? (
+              jobStage
             ) : (
               <FormattedMessage
                 defaultMessage="Identifying issues from traces..."
-                description="Issue detection progress > Step label"
+                description="Issue detection progress > Step label (fallback)"
               />
             )}
           </Typography.Text>

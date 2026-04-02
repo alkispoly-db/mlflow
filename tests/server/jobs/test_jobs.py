@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 import multiprocessing
 import os
 import time
@@ -7,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+import mlflow.store.jobs.sqlalchemy_store
 from mlflow.entities._job_status import JobStatus
 from mlflow.environment_variables import MLFLOW_ENABLE_WORKSPACES, MLFLOW_WORKSPACE
 from mlflow.exceptions import MlflowException
@@ -18,7 +20,14 @@ from mlflow.server.jobs import (
     job,
     submit_job,
 )
-from mlflow.server.jobs.utils import _enqueue_unfinished_jobs
+from mlflow.server.jobs._job_subproc_entry import _main
+from mlflow.server.jobs.utils import (
+    MLFLOW_SERVER_JOB_FUNCTION_FULLNAME_ENV_VAR,
+    MLFLOW_SERVER_JOB_PARAMS_ENV_VAR,
+    MLFLOW_SERVER_JOB_RESULT_DUMP_PATH_ENV_VAR,
+    MLFLOW_SERVER_JOB_TRANSIENT_ERROR_CLASSES_PATH_ENV_VAR,
+    _enqueue_unfinished_jobs,
+)
 from mlflow.store.jobs.sqlalchemy_store import SqlAlchemyJobStore
 from mlflow.store.jobs.sqlalchemy_workspace_store import WorkspaceAwareSqlAlchemyJobStore
 from mlflow.utils.workspace_context import WorkspaceContext
@@ -452,8 +461,6 @@ def test_job_timeout(monkeypatch, tmp_path):
 
 
 def test_list_job_pagination(monkeypatch, tmp_path):
-    import mlflow.store.jobs.sqlalchemy_store
-
     monkeypatch.setattr(mlflow.store.jobs.sqlalchemy_store, "_LIST_JOB_PAGE_SIZE", 3)
     with _setup_job_runner(
         monkeypatch,
@@ -530,7 +537,10 @@ def test_submit_job_bad_call(monkeypatch, tmp_path):
 def check_python_env_fn():
     import openai
 
-    from mlflow.server.jobs.utils import MLFLOW_SERVER_JOB_NAME_ENV_VAR
+    from mlflow.server.jobs.utils import (
+        MLFLOW_SERVER_JOB_FUNCTION_FULLNAME_ENV_VAR,
+        MLFLOW_SERVER_JOB_NAME_ENV_VAR,
+    )
     from mlflow.utils import PYTHON_VERSION
 
     assert PYTHON_VERSION == "3.11.9"
@@ -538,7 +548,7 @@ def check_python_env_fn():
 
     assert os.environ.get(MLFLOW_SERVER_JOB_NAME_ENV_VAR) == "python_env_checker"
     assert (
-        os.environ.get("_MLFLOW_SERVER_JOB_FUNCTION_FULLNAME")
+        os.environ.get(MLFLOW_SERVER_JOB_FUNCTION_FULLNAME_ENV_VAR)
         == "tests.server.jobs.test_jobs.check_python_env_fn"
     )
 
@@ -880,3 +890,77 @@ def test_reenqueued_jobs_respect_workspace_disabled(monkeypatch, db_uri):
         mock_submit.assert_called_once()
         _, workspace, *_ = mock_submit.call_args[0]
         assert workspace is None
+
+
+def test_update_status_details(tmp_path: Path):
+    backend_store_uri = f"sqlite:///{tmp_path / 'test.db'}"
+    store = SqlAlchemyJobStore(backend_store_uri)
+
+    job = store.create_job("test_job", '{"param": "value"}')
+    assert job.status_details is None
+
+    store.update_status_details(job.job_id, {"stage": "preprocessing"})
+    updated_job = store.get_job(job.job_id)
+    assert updated_job.status_details == {"stage": "preprocessing"}
+
+    store.update_status_details(job.job_id, {"stage": "processing", "progress": "50%"})
+    updated_job = store.get_job(job.job_id)
+    assert updated_job.status_details == {"stage": "processing", "progress": "50%"}
+
+
+def test_update_status_details_merges_with_existing(tmp_path: Path):
+    backend_store_uri = f"sqlite:///{tmp_path / 'test.db'}"
+    store = SqlAlchemyJobStore(backend_store_uri)
+
+    job = store.create_job("test_job", '{"param": "value"}')
+
+    store.update_status_details(job.job_id, {"stage": "preprocessing", "step": "1"})
+    updated_job = store.get_job(job.job_id)
+    assert updated_job.status_details == {"stage": "preprocessing", "step": "1"}
+
+    store.update_status_details(job.job_id, {"stage": "processing", "progress": "50%"})
+    updated_job = store.get_job(job.job_id)
+    assert updated_job.status_details == {"stage": "processing", "step": "1", "progress": "50%"}
+
+    store.update_status_details(job.job_id, {"progress": "100%"})
+    updated_job = store.get_job(job.job_id)
+    assert updated_job.status_details == {"stage": "processing", "step": "1", "progress": "100%"}
+
+
+def test_update_status_details_on_nonexistent_job(tmp_path: Path):
+    backend_store_uri = f"sqlite:///{tmp_path / 'test.db'}"
+    store = SqlAlchemyJobStore(backend_store_uri)
+
+    with pytest.raises(MlflowException, match="Job .+ not found"):
+        store.update_status_details("nonexistent-job-id", {"stage": "test"})
+
+
+def test_subproc_entry_telemetry(tmp_path, monkeypatch):
+    result_path = str(tmp_path / "result.json")
+    transient_error_path = tmp_path / "transient_errors.txt"
+    transient_error_path.write_text("")
+    monkeypatch.setenv(
+        MLFLOW_SERVER_JOB_FUNCTION_FULLNAME_ENV_VAR,
+        "tests.server.jobs.test_jobs.basic_job_fun",
+    )
+    monkeypatch.setenv(MLFLOW_SERVER_JOB_PARAMS_ENV_VAR, json.dumps({"x": 1, "y": 2}))
+    monkeypatch.setenv(MLFLOW_SERVER_JOB_RESULT_DUMP_PATH_ENV_VAR, result_path)
+    monkeypatch.setenv(
+        MLFLOW_SERVER_JOB_TRANSIENT_ERROR_CLASSES_PATH_ENV_VAR, str(transient_error_path)
+    )
+
+    mock_client = mock.Mock()
+    with (
+        mock.patch(
+            "mlflow.server.jobs._job_subproc_entry.set_telemetry_client"
+        ) as mock_set_telemetry,
+        mock.patch(
+            "mlflow.server.jobs._job_subproc_entry.get_telemetry_client",
+            return_value=mock_client,
+        ),
+        mock.patch("mlflow.server.jobs._job_subproc_entry._exit_when_orphaned"),
+    ):
+        _main()
+
+    mock_set_telemetry.assert_called_once()
+    mock_client.flush.assert_called_once()

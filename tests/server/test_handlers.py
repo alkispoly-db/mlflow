@@ -99,6 +99,8 @@ from mlflow.protos.service_pb2 import (
     DeleteScorer,
     DeleteTraceTag,
     DeleteTraceTagV3,
+    GatewayEndpoint,
+    GetGatewayEndpoint,
     GetScorer,
     GetTrace,
     LinkPromptsToTrace,
@@ -124,6 +126,7 @@ from mlflow.server import (
 )
 from mlflow.server.handlers import (
     ARTIFACT_STREAM_CHUNK_SIZE,
+    STATIC_PREFIX_ENV_VAR,
     ModelRegistryStoreRegistryWrapper,
     TrackingStoreRegistryWrapper,
     _batch_get_trace_infos,
@@ -150,9 +153,11 @@ from mlflow.server.handlers import (
     _delete_trace_tag_v3,
     _deprecated_search_traces_v2,
     _download_artifact,
+    _get_ajax_path,
     _get_dataset_experiment_ids_handler,
     _get_dataset_handler,
     _get_dataset_records_handler,
+    _get_gateway_endpoint,
     _get_issue,
     _get_latest_versions,
     _get_model_version,
@@ -161,6 +166,7 @@ from mlflow.server.handlers import (
     _get_presigned_download_url,
     _get_registered_model,
     _get_request_message,
+    _get_rest_path,
     _get_scorer,
     _get_trace,
     _get_trace_artifact_repo,
@@ -221,7 +227,6 @@ from mlflow.tracing.analysis import TraceFilterCorrelationResult
 from mlflow.tracing.utils import build_otel_context
 from mlflow.utils.mlflow_tags import MLFLOW_ARTIFACT_LOCATION
 from mlflow.utils.proto_json_utils import message_to_json
-from mlflow.utils.providers import _PROVIDER_BACKEND_AVAILABLE
 from mlflow.utils.validation import MAX_BATCH_LOG_REQUEST_SIZE
 from mlflow.utils.workspace_context import WorkspaceContext
 from mlflow.utils.workspace_utils import DEFAULT_WORKSPACE_NAME
@@ -326,6 +331,7 @@ def _create_mock_job(
     params=None,
     result=None,
     creation_time=1234567890000,
+    status_details=None,
 ):
     from mlflow.entities._job import Job
     from mlflow.entities._job_status import JobStatus
@@ -347,6 +353,7 @@ def _create_mock_job(
         result=json.dumps(result) if result and status_name == "SUCCEEDED" else result,
         retry_count=0,
         last_update_time=creation_time,
+        status_details=status_details,
     )
 
 
@@ -2826,7 +2833,6 @@ def test_link_prompts_to_trace_handler(mock_get_request_message, mock_tracking_s
     assert response.status_code == 200
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_list_providers():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/supported-providers")
@@ -2838,7 +2844,6 @@ def test_list_providers():
         assert "openai" in data["providers"]
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_list_models():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/supported-models?provider=openai")
@@ -2849,7 +2854,6 @@ def test_list_models():
         assert len(data["models"]) > 0
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_list_models_all_providers():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/supported-models")
@@ -2860,7 +2864,6 @@ def test_list_models_all_providers():
         assert len(data["models"]) > 0
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_get_provider_config():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/provider-config?provider=openai")
@@ -2874,7 +2877,6 @@ def test_get_provider_config():
         assert api_key_mode["mode"] == "api_key"
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_get_provider_config_with_multiple_auth_modes():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/provider-config?provider=bedrock")
@@ -2894,21 +2896,10 @@ def test_get_provider_config_with_multiple_auth_modes():
         assert any(f["name"] == "aws_role_name" for f in iam_role_mode["config_fields"])
 
 
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
 def test_get_provider_config_missing_provider():
     with app.test_client() as c:
         response = c.get("/ajax-api/3.0/mlflow/gateway/provider-config")
         assert response.status_code == 400
-
-
-@pytest.mark.skipif(not _PROVIDER_BACKEND_AVAILABLE, reason="litellm is required for LiteLLM tests")
-def test_litellm_not_available():
-    with mock.patch("mlflow.utils.providers._PROVIDER_BACKEND_AVAILABLE", False):
-        with app.test_client() as c:
-            response = c.get("/ajax-api/3.0/mlflow/gateway/supported-providers")
-            assert response.status_code == 400
-            data = response.get_json()
-            assert "LiteLLM is not installed" in data["message"]
 
 
 @pytest.mark.parametrize(
@@ -2965,6 +2956,41 @@ def test_update_gateway_endpoint_rejects_invalid_name(mock_get_request_message, 
     response_data = json.loads(response.get_data())
     assert "Invalid endpoint name" in response_data["message"]
     assert response_data["error_code"] == "INVALID_PARAMETER_VALUE"
+
+
+def test_get_gateway_endpoint_by_endpoint_id(mock_get_request_message, mock_tracking_store):
+    request_msg = GetGatewayEndpoint()
+    request_msg.endpoint_id = "ep-123"
+    mock_get_request_message.return_value = request_msg
+
+    mock_endpoint = mock.MagicMock()
+    mock_endpoint.to_proto.return_value = GatewayEndpoint(endpoint_id="ep-123")
+    mock_tracking_store.get_gateway_endpoint.return_value = mock_endpoint
+
+    response = _get_gateway_endpoint()
+
+    mock_tracking_store.get_gateway_endpoint.assert_called_once_with(
+        endpoint_id="ep-123", name=None
+    )
+    assert response.status_code == 200
+
+
+def test_get_gateway_endpoint_by_name(mock_get_request_message, mock_tracking_store):
+
+    request_msg = GetGatewayEndpoint()
+    request_msg.name = "my-endpoint"
+    mock_get_request_message.return_value = request_msg
+
+    mock_endpoint = mock.MagicMock()
+    mock_endpoint.to_proto.return_value = GatewayEndpoint(endpoint_id="ep-456", name="my-endpoint")
+    mock_tracking_store.get_gateway_endpoint.return_value = mock_endpoint
+
+    response = _get_gateway_endpoint()
+
+    mock_tracking_store.get_gateway_endpoint.assert_called_once_with(
+        endpoint_id=None, name="my-endpoint"
+    )
+    assert response.status_code == 200
 
 
 def test_query_trace_metrics_handler(mock_get_request_message, mock_tracking_store):
@@ -3450,6 +3476,7 @@ def test_create_prompt_optimization_job(mock_tracking_store):
         result=None,
         retry_count=0,
         last_update_time=1234567890,
+        status_details=None,
     )
 
     mock_run = mock.MagicMock()
@@ -3516,6 +3543,7 @@ def test_create_prompt_optimization_job_zero_shot(mock_tracking_store):
         result=None,
         retry_count=0,
         last_update_time=1234567890,
+        status_details=None,
     )
 
     mock_run = mock.MagicMock()
@@ -3646,6 +3674,7 @@ def test_cancel_prompt_optimization_job():
         result=None,
         retry_count=0,
         last_update_time=1234567890,
+        status_details=None,
     )
 
     with (
@@ -3887,7 +3916,7 @@ def test_get_prompt_optimization_job_no_progress_without_max_metric_calls(mock_t
             data = response.get_json()
             job = data["job"]
             # Progress should NOT be set when max_metric_calls is not configured
-            assert "progress" not in job["state"].get("metadata", {})
+            assert "progress" not in job["state"].get("status_details", {})
 
 
 def test_search_prompt_optimization_jobs_returns_multiple_jobs(mock_job_store):
@@ -4806,6 +4835,7 @@ def test_invoke_issue_detection_handler_success(monkeypatch):
         result=None,
         retry_count=0,
         last_update_time=1234567890000,
+        status_details=None,
     )
 
     mock_run_info = mock.MagicMock()
@@ -4867,6 +4897,7 @@ def test_invoke_issue_detection_handler_with_endpoint(monkeypatch):
         result=None,
         retry_count=0,
         last_update_time=1234567890000,
+        status_details=None,
     )
 
     mock_run_info = mock.MagicMock()
@@ -4950,6 +4981,7 @@ def test_get_job_success(mock_job_store):
         result='{"summary": "Found 3 issues", "issues": 3, "total_traces_analyzed": 10}',
         retry_count=0,
         last_update_time=1234567900000,
+        status_details=None,
     )
 
     with (
@@ -4964,6 +4996,7 @@ def test_get_job_success(mock_job_store):
         assert json_response["result"]["summary"] == "Found 3 issues"
         assert json_response["result"]["issues"] == 3
         assert json_response["result"]["total_traces_analyzed"] == 10
+        assert json_response["status_details"] is None
 
 
 def test_get_job_pending(mock_job_store):
@@ -4977,6 +5010,7 @@ def test_get_job_pending(mock_job_store):
         result=None,
         retry_count=0,
         last_update_time=1234567890000,
+        status_details=None,
     )
 
     with (
@@ -4989,6 +5023,7 @@ def test_get_job_pending(mock_job_store):
 
         assert json_response["status"] == "PENDING"
         assert json_response["result"] is None
+        assert json_response["status_details"] is None
 
 
 def test_cancel_job_success(mock_job_store):
@@ -5002,6 +5037,7 @@ def test_cancel_job_success(mock_job_store):
         result=None,
         retry_count=0,
         last_update_time=1234567900000,
+        status_details=None,
     )
 
     with (
@@ -5014,3 +5050,19 @@ def test_cancel_job_success(mock_job_store):
 
         assert json_response["status"] == "CANCELED"
         mock_cancel.assert_called_once_with("job-123")
+
+
+def test_get_rest_path_respects_static_prefix(monkeypatch):
+    # Without prefix, both return bare paths
+    assert _get_rest_path("/mlflow/experiments/search") == "/api/2.0/mlflow/experiments/search"
+    assert _get_ajax_path("/mlflow/experiments/search") == "/ajax-api/2.0/mlflow/experiments/search"
+
+    # With prefix, both should include the prefix
+    monkeypatch.setenv(STATIC_PREFIX_ENV_VAR, "/myapp")
+    assert (
+        _get_rest_path("/mlflow/experiments/search") == "/myapp/api/2.0/mlflow/experiments/search"
+    )
+    assert (
+        _get_ajax_path("/mlflow/experiments/search")
+        == "/myapp/ajax-api/2.0/mlflow/experiments/search"
+    )
