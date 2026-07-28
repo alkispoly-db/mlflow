@@ -112,3 +112,13 @@ def replicate(args: argparse.Namespace) -> str | None:
         new_mv.version,
     )
     return new_mv.version
+
+
+def main(argv: list[str] | None = None) -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    args = parse_args(argv)
+    replicate(args)
+
+
+if __name__ == "__main__":
+    main()

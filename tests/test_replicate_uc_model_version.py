@@ -164,3 +164,24 @@ def test_replicate_dry_run_makes_no_writes():
     assert version is None
     dst_client.create_model_version.assert_not_called()
     dst_client.set_registered_model_alias.assert_not_called()
+
+
+def test_main_invokes_replicate():
+    argv = [
+        "--src-registry-uri",
+        "databricks-uc://a",
+        "--dst-registry-uri",
+        "databricks-uc://b",
+        "--src-model",
+        "cat_a.sch.model",
+        "--src-version",
+        "3",
+        "--dst-model",
+        "cat_b.sch.model",
+    ]
+    with mock.patch.object(R, "replicate", return_value="7") as mock_replicate:
+        R.main(argv)
+    mock_replicate.assert_called_once()
+    called_args = mock_replicate.call_args[0][0]
+    assert called_args.src_model == "cat_a.sch.model"
+    assert called_args.dst_model == "cat_b.sch.model"
