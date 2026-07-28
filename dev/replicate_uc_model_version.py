@@ -6,6 +6,13 @@ and are intentionally not preserved.
 """
 
 import argparse
+import logging
+
+from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, ErrorCode
+from mlflow.tracking import MlflowClient
+
+_logger = logging.getLogger(__name__)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,3 +41,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return build_parser().parse_args(argv)
+
+
+def ensure_registered_model(client: MlflowClient, name: str, dry_run: bool) -> bool:
+    try:
+        client.get_registered_model(name)
+        return True
+    except MlflowException as e:
+        if e.error_code != ErrorCode.Name(RESOURCE_DOES_NOT_EXIST):
+            raise
+    if dry_run:
+        _logger.info("[dry-run] would create registered model %s", name)
+    else:
+        client.create_registered_model(name)
+    return False
