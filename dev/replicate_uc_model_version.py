@@ -7,7 +7,9 @@ and are intentionally not preserved.
 
 import argparse
 import logging
+import tempfile
 
+import mlflow.artifacts
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, ErrorCode
@@ -62,3 +64,51 @@ def resolve_aliases(src_mv: ModelVersion, requested: list[str]) -> list[str]:
     if requested:
         return requested
     return list(src_mv.aliases)
+
+
+def replicate(args: argparse.Namespace) -> str | None:
+    src_client = MlflowClient(registry_uri=args.src_registry_uri)
+    dst_client = MlflowClient(registry_uri=args.dst_registry_uri)
+
+    src_mv = src_client.get_model_version(args.src_model, args.src_version)
+    aliases = resolve_aliases(src_mv, args.alias)
+
+    if args.dry_run:
+        _logger.info(
+            "[dry-run] would replicate %s/%s -> %s (tags=%s, description=%r, aliases=%s)",
+            args.src_model,
+            args.src_version,
+            args.dst_model,
+            dict(src_mv.tags),
+            src_mv.description,
+            aliases,
+        )
+        ensure_registered_model(dst_client, args.dst_model, dry_run=True)
+        return None
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        local_path = mlflow.artifacts.download_artifacts(
+            artifact_uri=f"models:/{args.src_model}/{args.src_version}",
+            dst_path=tmp_dir,
+            registry_uri=args.src_registry_uri,
+        )
+        ensure_registered_model(dst_client, args.dst_model, dry_run=False)
+        new_mv = dst_client.create_model_version(
+            name=args.dst_model,
+            source=local_path,
+            tags=dict(src_mv.tags),
+            description=src_mv.description,
+            run_id=None,
+        )
+
+    for alias in aliases:
+        dst_client.set_registered_model_alias(args.dst_model, alias, new_mv.version)
+
+    _logger.info(
+        "Replicated %s/%s -> %s/%s",
+        args.src_model,
+        args.src_version,
+        args.dst_model,
+        new_mv.version,
+    )
+    return new_mv.version
