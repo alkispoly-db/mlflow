@@ -441,6 +441,7 @@ exclude = [
   "mlflow/genai/label_schemas/__init__.py",
   "tests/protos",
   "docs/docs/classic-ml/mlflow-3/index.mdx",
+  "docs/superpowers",
   "examples/open_webui/mlflow_filter_pipeline.py",
 ]
 typing-extensions-allowlist = [
