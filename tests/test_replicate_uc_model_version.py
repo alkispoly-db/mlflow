@@ -1,6 +1,11 @@
 from unittest import mock
 
-from dev.replicate_uc_model_version import ensure_registered_model, parse_args
+from dev.replicate_uc_model_version import (
+    ensure_registered_model,
+    parse_args,
+    resolve_aliases,
+)
+from mlflow.entities.model_registry import ModelVersion
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST
 
@@ -75,3 +80,22 @@ def test_ensure_registered_model_dry_run_skips_create():
     existed = ensure_registered_model(client, "cat.sch.model", dry_run=True)
     assert existed is False
     client.create_registered_model.assert_not_called()
+
+
+def _mv_with_aliases(aliases):
+    return ModelVersion(name="cat.sch.model", version="3", creation_timestamp=0, aliases=aliases)
+
+
+def test_resolve_aliases_uses_requested_when_given():
+    src_mv = _mv_with_aliases(["prod", "old"])
+    assert resolve_aliases(src_mv, ["champion"]) == ["champion"]
+
+
+def test_resolve_aliases_defaults_to_source_aliases():
+    src_mv = _mv_with_aliases(["prod", "champion"])
+    assert resolve_aliases(src_mv, []) == ["prod", "champion"]
+
+
+def test_resolve_aliases_empty_when_none():
+    src_mv = _mv_with_aliases([])
+    assert resolve_aliases(src_mv, []) == []

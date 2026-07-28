@@ -8,6 +8,7 @@ and are intentionally not preserved.
 import argparse
 import logging
 
+from mlflow.entities.model_registry import ModelVersion
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, ErrorCode
 from mlflow.tracking import MlflowClient
@@ -55,3 +56,9 @@ def ensure_registered_model(client: MlflowClient, name: str, dry_run: bool) -> b
     else:
         client.create_registered_model(name)
     return False
+
+
+def resolve_aliases(src_mv: ModelVersion, requested: list[str]) -> list[str]:
+    if requested:
+        return requested
+    return list(src_mv.aliases)
