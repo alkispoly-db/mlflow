@@ -20,13 +20,41 @@ _logger = logging.getLogger(__name__)
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Replicate one UC model version to a registered model in another metastore."
+        description="Replicate one UC model version to a registered model in another metastore.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "example:\n"
+            "  python dev/replicate_uc_model_version.py \\\n"
+            "    --src-registry-uri databricks-uc://src-profile \\\n"
+            "    --dst-registry-uri databricks-uc://dst-profile \\\n"
+            "    --src-model main.my_schema.my_model --src-version 3 \\\n"
+            "    --dst-model main.other_schema.my_model \\\n"
+            "    --alias champion --dry-run"
+        ),
     )
-    parser.add_argument("--src-registry-uri", required=True, help="Source registry URI.")
-    parser.add_argument("--dst-registry-uri", required=True, help="Destination registry URI.")
-    parser.add_argument("--src-model", required=True, help="Source registered model name.")
-    parser.add_argument("--src-version", required=True, help="Source model version number.")
-    parser.add_argument("--dst-model", required=True, help="Destination registered model name.")
+    parser.add_argument(
+        "--src-registry-uri",
+        required=True,
+        help="Source registry URI, e.g. 'databricks-uc://src-profile' (a profile in "
+        "~/.databrickscfg) or 'databricks-uc'.",
+    )
+    parser.add_argument(
+        "--dst-registry-uri",
+        required=True,
+        help="Destination registry URI, e.g. 'databricks-uc://dst-profile' (a profile in "
+        "~/.databrickscfg) or 'databricks-uc'.",
+    )
+    parser.add_argument(
+        "--src-model",
+        required=True,
+        help="Source registered model name, e.g. 'main.my_schema.my_model'.",
+    )
+    parser.add_argument("--src-version", required=True, help="Source model version number, e.g. 3.")
+    parser.add_argument(
+        "--dst-model",
+        required=True,
+        help="Destination registered model name, e.g. 'main.other_schema.my_model'.",
+    )
     parser.add_argument(
         "--alias",
         action="append",
