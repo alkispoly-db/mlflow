@@ -8,8 +8,10 @@ and are intentionally not preserved.
 import argparse
 import logging
 import tempfile
+from pathlib import Path
 
 import mlflow.artifacts
+import yaml
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, ErrorCode
@@ -94,6 +96,56 @@ def resolve_aliases(src_mv: ModelVersion, requested: list[str]) -> list[str]:
     return list(src_mv.aliases)
 
 
+def decouple_logged_model(local_path: str) -> None:
+    """Strip source-metastore logged-model identity from MLmodel files.
+
+    Newer MLflow create_model_version resolves the embedded logged model in the
+    TARGET metastore. The source logged model does not exist there, causing
+    NOT_FOUND errors. This decouples the artifacts into a standalone model by
+    removing model_id, model_uuid, run_id, and artifact_path from all MLmodel
+    files in the downloaded directory (recursively). These keys embed source
+    lineage and are meaningless in the destination metastore.
+
+    This is version-dependent (MLflow 3.13+) so must be preserved across
+    future refactors.
+    """
+    # Find all MLmodel files (may be multiple for nested models).
+    local_path_obj = Path(local_path)
+    mlmodel_files = list(local_path_obj.glob("**/MLmodel"))
+
+    if not mlmodel_files:
+        _logger.warning("No MLmodel files found in %s", local_path)
+        return
+
+    for mlmodel_file in mlmodel_files:
+        _logger.debug("Processing MLmodel at %s", mlmodel_file)
+
+        with open(mlmodel_file, "r") as f:
+            model_config = yaml.safe_load(f)
+
+        if not model_config:
+            _logger.warning("MLmodel at %s is empty or invalid YAML", mlmodel_file)
+            continue
+
+        # Strip identity/lineage keys that reference the source metastore.
+        keys_to_remove = ["model_id", "model_uuid", "run_id", "artifact_path"]
+        removed_keys = [k for k in keys_to_remove if k in model_config]
+
+        for key in removed_keys:
+            del model_config[key]
+
+        if removed_keys:
+            _logger.info(
+                "Decoupled MLmodel at %s: removed keys %s",
+                mlmodel_file,
+                removed_keys,
+            )
+
+        # Write back preserving key order and YAML structure.
+        with open(mlmodel_file, "w") as f:
+            yaml.safe_dump(model_config, f, sort_keys=False, allow_unicode=True)
+
+
 def replicate(args: argparse.Namespace) -> str | None:
     src_client = MlflowClient(registry_uri=args.src_registry_uri)
     dst_client = MlflowClient(registry_uri=args.dst_registry_uri)
@@ -111,6 +163,7 @@ def replicate(args: argparse.Namespace) -> str | None:
             src_mv.description,
             aliases,
         )
+        _logger.info("[dry-run] would decouple logged-model identity from MLmodel files")
         ensure_registered_model(dst_client, args.dst_model, dry_run=True)
         return None
 
@@ -120,6 +173,10 @@ def replicate(args: argparse.Namespace) -> str | None:
             dst_path=tmp_dir,
             registry_uri=args.src_registry_uri,
         )
+
+        # Decouple the source logged-model identity before registering in destination.
+        decouple_logged_model(local_path)
+
         ensure_registered_model(dst_client, args.dst_model, dry_run=False)
         new_mv = dst_client.create_model_version(
             name=args.dst_model,
